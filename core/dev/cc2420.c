@@ -307,6 +307,7 @@ cc2420_init(void)
 #else
   reg &= ~(AUTOACK | ADR_DECODE);
 #endif /* CC2420_CONF_AUTOACK */
+
   setreg(CC2420_MDMCTRL0, reg);
 
   /* Set transmission turnaround time to the lower setting (8 symbols
@@ -606,6 +607,8 @@ cc2420_set_pan_addr(unsigned pan,
 /*
  * Interrupt leaves frame intact in FIFO.
  */
+
+static char hack_flushrx = 0;
 #if CC2420_TIMETABLE_PROFILING
 #define cc2420_timetable_size 16
 TIMETABLE(cc2420_timetable);
@@ -624,6 +627,9 @@ cc2420_interrupt(void)
   last_packet_timestamp = cc2420_sfd_start_time;
   pending++;
   cc2420_packets_seen++;
+
+  if (hack_flushrx)
+    flushrx(); 
   return 1;
 }
 /*---------------------------------------------------------------------------*/
@@ -884,4 +890,14 @@ cc2420_set_cca_threshold(int value)
   setreg(CC2420_RSSI, shifted);
   RELEASE_LOCK();
 }
+/*---------------------------------------------------------------------------*/
+
+char
+cc2420_hack_prepare(char new_value)
+{
+  char result = hack_flushrx;
+  hack_flushrx = new_value;
+  return result;
+}
+
 /*---------------------------------------------------------------------------*/
