@@ -608,7 +608,8 @@ cc2420_set_pan_addr(unsigned pan,
  * Interrupt leaves frame intact in FIFO.
  */
 
-static char hack_flushrx = 0;
+static uint8_t auto_flushrx_received = 0;
+
 #if CC2420_TIMETABLE_PROFILING
 #define cc2420_timetable_size 16
 TIMETABLE(cc2420_timetable);
@@ -628,7 +629,7 @@ cc2420_interrupt(void)
   pending++;
   cc2420_packets_seen++;
 
-  if (hack_flushrx)
+  if (auto_flushrx_received)
     flushrx(); 
   return 1;
 }
@@ -892,11 +893,11 @@ cc2420_set_cca_threshold(int value)
 }
 /*---------------------------------------------------------------------------*/
 
-char
-cc2420_hack_prepare(char new_value)
+uint8_t
+cc2420_set_auto_flushrx(uint8_t new_value)
 {
-  char result = hack_flushrx;
-  hack_flushrx = new_value;
+  uint8_t result = auto_flushrx_received;
+  auto_flushrx_received = new_value;
   return result;
 }
 
