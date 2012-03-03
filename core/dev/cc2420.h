@@ -201,4 +201,12 @@ void cc2420_set_cca_threshold(int value);
     CC2420_SPI_DISABLE();                       \
   } while (0)
 
+
+/*---------------------------------------------------------------------------*/
+/* C. Adjih - Hipercom 2011 : "extensions" */
+
+uint8_t cc2420_set_auto_flushrx(uint8_t new_value);
+
+/*---------------------------------------------------------------------------*/
+
 #endif /* __CC2420_H__ */

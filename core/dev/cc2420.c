@@ -615,6 +615,8 @@ static uint8_t auto_flushrx_received = 0;
 TIMETABLE(cc2420_timetable);
 TIMETABLE_AGGREGATE(aggregate_time, 10);
 #endif /* CC2420_TIMETABLE_PROFILING */
+
+volatile uint8_t cc2420_packet_counter; // added in cc2420.c
 int
 cc2420_interrupt(void)
 {
@@ -628,7 +630,7 @@ cc2420_interrupt(void)
   last_packet_timestamp = cc2420_sfd_start_time;
   pending++;
   cc2420_packets_seen++;
-
+  cc2420_packet_counter++;
   if (auto_flushrx_received)
     flushrx(); 
   return 1;
@@ -891,6 +893,7 @@ cc2420_set_cca_threshold(int value)
   setreg(CC2420_RSSI, shifted);
   RELEASE_LOCK();
 }
+/*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
 uint8_t
