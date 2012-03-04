@@ -1,0 +1,117 @@
+===========================================================================
+                  Sniffer Firmware for the Zolertia Z1
+
+        Cedric Adjih, Hipercom Project-Team, Inria Paris-Rocquencourt
+                       Copyright 2012 Inria. 
+            All rights reserved. Distributed only with permission.
+===========================================================================
+
+---------------------------------------------------------------------------
+
+Building firmware for the mote
+------------------------------
+
+* To build only the sniffer firmware:
+  make
+  (the firmware will then be sniffer.z1) 
+
+* To build and flash all the motes (as with usual, for Zolertia Z1)
+  make sniffer.upload
+
+* To build and flash some motes:
+  make sniffer.upload MOTES=1
+
+---------------------------------------------------------------------------
+
+Running the sniffer
+-------------------
+
+* Running the sniffer as text dump
+
+  . The following command runs a sniffer, connecting to mote at '/dev/ttyUSB0',
+  and dumps the content of all packets
+    python moteSniffer.py --tty /dev/ttyUSB0 sniffer-text
+
+* Running the sniffer for Wireshark
+
+  . The following command runs a sniffer, connecting to mote at '/dev/ttyUSB0',
+  and forwarding all the packets to the ZEP port at localhost
+    python moteSniffer.py --tty /dev/ttyUSB0 sniffer-wireshark
+
+  . Wireshark can then be run as:
+    wireshark -i lo
+
+(the Makefile can be edited so that "make sniff" and "make flash" are useful)
+
+* LEDS:
+  . The sniffer mote starts with all leds off
+  . When put in sniffer mode the red led is on, and the blue led is switched
+    every time a packet is received
+
+---------------------------------------------------------------------------
+
+Installing one the latest versions of Wireshark
+-----------------------------------------------
+
+As of March 2012, one Ubuntu PPA is available for Wireshark, 
+it is at https://launchpad.net/~dreibh/+archive/ppa
+
+Installation is a the installation of a normal ppa, e.g.:
+  sudo add-apt-repository ppa:dreibh/ppa
+  echo "deb http://ppa.launchpad.net/dreibh/ppa/ubuntu lucid main" >> /etc/apt/sources.list
+  echo "deb-src http://ppa.launchpad.net/dreibh/ppa/ubuntu lucid main" >> /etc/apt/sources.list
+  sudo apt-get update
+  sudo apt-get install wireshark
+
+---------------------------------------------------------------------------
+
+Internals
+---------
+
+The protocol is as follows:
+* The local machine sends commands to the mote ('Command Invoke') as:
+    <CODE1 (1 byte)> <CODE2 (1 byte)> <LEN (1 byte)><COMMAND ...>
+  where:
+    <CODE1>              = 0x43 ('C')
+    <CODE2>              = 0x49 ('I')
+    <LEN>                = length of command
+    <COMMAND INVOKE...>  = the command with LEN bytes 
+
+* The mote sends answers to the local machine ('Command Answer') as:
+    <CODE1 (1 byte)> <CODE2 (1 byte)> <LEN (1 byte)><INFO ...>
+  where:
+    <CODE1>              = 0x43 ('C')
+    <CODE2>              = 0x41 ('A')
+    <LEN>                = length of command
+    <COMMAND ANSWER ...> = the command with LEN bytes 
+
+--------------------------------------------------
+
+Most of the time, the first byte of the <COMMAND INVOKE ...> defines the 
+type of the command, we write it as <COMMAND CODE>.
+
+The protocol for each command is as follows:
+
+* Reset command: 
+   . command without argument i.e. <COMMAND INVOKE ..> == ''
+   . the mote stops what it was doing, and waits for the next command
+   . no output
+
+* Packet sniffer command:
+   . Put the mote in sniffer mode, after what it will sends
+   . Protocol:
+     -> <CI-HEADER><COMMAND INVOKE == 'P'>
+     <- <CA-HEADER><COMMAND ANSWER == 'P'>
+     . for each packet received, a command answer is sent as:
+     <- <CA-HEADER><COMMAND ASNWER == 'p'><capture-header><packet-data>
+
+    where <capture-header> is 
+      <lost (1)><rssi (1)><link-qual (1)><packet index(4)><timestamp (4)>
+    with 
+      <lost> is the number of packets lost because serial buffer was full
+      <rssi> is the RSSI provided by the CC2420
+      <link-qual> is the link quality provided by the CC2420
+      <packet index> is a counter of the number of packets
+      <timestamp> is the number of clock cycles (e.g. at 8 Mhz).
+
+---------------------------------------------------------------------------
