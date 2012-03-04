@@ -264,7 +264,7 @@ typedef struct {
 
 static void run_rssi_loop(void)
 {
-  leds_on(LEDS_GREEN);
+  MY_LED_ON(MY_G);
   command_answer_rssi_t answer;
   memset(&answer, 0xee, sizeof(answer));
   answer.command_code1 = COMMAND_ANSWER_CODE1;
@@ -297,7 +297,7 @@ static void run_rssi_loop(void)
 
     if (has_serial_command()) {
       cc2420_set_auto_flushrx(0);
-      leds_off(LEDS_GREEN);
+      MY_LED_OFF(MY_G);
       return;
     }
   }
@@ -321,12 +321,21 @@ static void run_rssi_dac(void)
   DAC12_0DAT = 0x00; // DAC_0 output 0V
   DAC12_0CTL = DAC12IR | DAC12AMP_5 | DAC12ENC;
 
+#if 0
+  /* Set up P4 output */
+  P4SEL &= ~(1<<2); // P4.2    is selected as I/O
+  P4DIR |= (1<<2);  // P4.2    is output
+  P4OUT |= (1<<2); // P4.2    set to 1
+#endif
+
   while (!has_serial_command()) {
     uint8_t rssi = (cc2420_rssi() + 55);
     DAC12_0DAT = rssi << 4;
 
-    if (rssi > 100) MY_LED_ON(MY_B);
+    if (rssi > 40) MY_LED_ON(MY_B);
     else MY_LED_OFF(MY_B);
+
+    // P4OUT ^= (1<<2);
   }
 
   leds_off(LEDS_GREEN);
@@ -355,8 +364,7 @@ void run_current_mode_loop()
 */
 static void run_main_loop(void)
 {
-  my_init_uart0_2Mbps();
-  //my_init_uart0();
+  my_uart0_init();
 
   for (;;) {
     run_current_mode_loop();
@@ -365,7 +373,6 @@ static void run_main_loop(void)
       uint8_t cmd_ok = 0;
       if (command_length == 0) {
 	mode = 'N';
-	//update_output_buffer(0, &mode, 1);
 	cmd_ok = 1;
       } else {
 
@@ -381,6 +388,11 @@ static void run_main_loop(void)
 	  }  else if (command_buffer[0] == 'R') {
 	    mode = 'R';
 	    update_output_buffer(0, &mode, 1);
+	    cmd_ok = 1;
+	  }  else if (command_buffer[0] == 'H') {
+	    mode = 'H';
+	    update_output_buffer(0, &mode, 1);
+	    my_uart0_switch_to_2Mbps();
 	    cmd_ok = 1;
 	  }  else if (command_buffer[0] == 'D') {
 	    mode = 'D';

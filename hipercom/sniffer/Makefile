@@ -25,11 +25,15 @@ MOTECTL=python moteSniffer.py --reset --mote-id ${SNIFFER_MOTEID}
 
 sniff: ; ${MOTECTL} sniffer-wireshark
 
+sniff-fast: ; ${MOTECTL} --high-speed sniffer-wireshark
+
 dump: ; ${MOTECTL} sniffer-text
 
-rssi-dac: ; ${MOTECTL} rssi-dac
-
 rssi: ; ${MOTECTL} rssi
+
+rssi-fast: ; ${MOTECTL} --high-speed rssi
+
+rssi-dac: ; ${MOTECTL} rssi-dac
 
 flash: sniffer.z1
 	cd .. && python MoteManager.py --mote-id ${SNIFFER_MOTEID} \

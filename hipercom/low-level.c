@@ -112,7 +112,7 @@ void my_uart0_init(void)
   IFG2 &= ~UCA0TXIFG;
 }
 
-void my_init_uart0_2Mbps()
+void my_uart0_init_2Mbps()
 {
   UCA0BR0 = 0x5;                  /* 8MHz/1600000 = 5 -> 1.6 Mbps 
                                      but ok for 2 Mbps on receiver! */

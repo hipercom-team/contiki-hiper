@@ -243,16 +243,14 @@ parser.add_option("--reset", dest="shouldReset",
 parser.add_option("--mote-id", dest="moteId", type="int",
                   default=DefaultMoteId)
 parser.add_option("--tty", dest="ttyName", action="store", default=None)
-parser.add_option("--bps", dest="speed", type="int",
-                  default=2000000)
+#parser.add_option("--bps", dest="speed", type="int",
+#                  default=115200)
+parser.add_option("--high-speed", dest="withHighSpeed", action="store_true",
+                  default=False)
 
 option,argList = parser.parse_args()
 
-#if len(argList) == 0:
-#    moteId = option.moteId
-#else: moteId = int(argList[0])
 moteId = option.moteId
-
 manager = MoteManager.MoteManager(contikiDir = "../..")
 
 if option.ttyName != None:
@@ -266,19 +264,30 @@ else:
 
 #--------------------------------------------------
 
+HighSpeed = 2000000 # 2 Mbps
+
 if option.shouldReset:
     mote.reset()
+    time.sleep(0.1)
 
-#mote.openPort(speed=2000000)
-mote.openPort(speed=option.speed)
+mote.openPort(speed=115200)
 mote.flush()
-isSync = attemptSyncMote(mote, 0.2, 50)
+isSync = attemptSyncMote(mote, 0.2, 15)
 if not isSync:
     raise RuntimeError("Cannot sync with sniffer mote")
 print "* connected to sniffer mote"
 
-#--------------------------------------------------
+if option.withHighSpeed:
+    print "* switching UART to high speed"
+    mote.port.write(makeCmd("H"))
+    time.sleep(0.1)
+    mote.reOpenPort(HighSpeed)
+    isSync = attemptSyncMote(mote, 0.2, 15)
+    if not isSync:
+        raise RuntimeError("Cannot sync with sniffer mote")
+    print "  done"
 
+#--------------------------------------------------
 
 if len(argList) == 0:
     print "# no command, exiting"
