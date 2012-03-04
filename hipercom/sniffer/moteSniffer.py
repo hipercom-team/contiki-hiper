@@ -215,6 +215,22 @@ class MoteSniffer:
 
     #--------------------------------------------------
 
+    def runAsRssiToDac(self, channel=26):
+        mote.write(makeCmd("D"))
+        while True:
+            data = moteGetCmdAnswer(mote)
+            if data == 'D': 
+                print "* sniffer mote acknowledged rssi-to-dac mode"
+                continue
+            elif data == 'C':
+                print "* sniffer mote switched to canal", repr(data)
+                continue
+            else:
+                sys.stdout.write("?")
+                sys.stdout.flush()
+
+    #--------------------------------------------------
+
 #---------------------------------------------------------------------------
 
 random.seed(time.time())
@@ -281,6 +297,8 @@ elif command == "sniffer-text":
     sniffer.runAsPacketSniffer("text")
 elif command == "rssi":
     sniffer.runAsRssiSniffer()
+elif command == "rssi-dac":
+    sniffer.runAsRssiToDac()
 else:
     print ("FATAL, unknown command: %s" % command)
 

@@ -9,16 +9,34 @@
    just #include this file in your .c file
    (for gcc, "static inline" should be as fast as a macro)
 */
-/*---------------------------------------------------------------------------*/
 
 /* See: 
    platform/z1/dev/cc2420-arch.c -- (cc2420_arch_init(...))
    cpu/msp430/cc2420-arch-sfd.c  -- (cc2420_arch_sfd_init(...))
    contiki/cpu/cc2430/dev/uart.c
 
+   See doc:
    http://www.ti.com/lit/ds/symlink/msp430f2617.pdf
-   http://www.ti.com/lit/ug/slau049f/slau049f.pdf
+   http://www.ti.com/lit/ug/slau144i/slau144i.pdf
+   http://zolertia.sourceforge.net/wiki/images/e/e8/Z1_RevC_Datasheet.pdf
+   http://jmfriedt.free.fr/tp3_2009.pdf
  */
+
+/*---------------------------------------------------------------------------*/
+
+#define MY_LEDS_DIR      P5DIR
+#define MY_LEDS_SEL      P5SEL
+#define MY_LEDS_OUT      P5OUT
+
+#define MY_LED_ON(x)     (MY_LEDS_OUT &= ~(x))
+#define MY_LED_OFF(x)    (MY_LEDS_OUT |= (x))
+#define MY_LED_TOGGLE(x) (MY_LEDS_OUT ^= (x))
+
+#define MY_R        0x10
+#define MY_G        0x40
+#define MY_B        0x20
+
+/*---------------------------------------------------------------------------*/
 
 volatile uint16_t my_timerb_count = 0;
 

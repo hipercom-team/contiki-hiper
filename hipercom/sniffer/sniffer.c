@@ -305,15 +305,34 @@ static void run_rssi_loop(void)
 
 /*--------------------------------------------------*/
 
-#if 0
-static void run_rssi_mirror(void)
+static void run_rssi_dac(void)
 {
-  leds_on(LEDS_RED);
-  for (;;) {
+  /* empty first the serial buffer */
+  while (producer_offset != consumer_offset)
+    send_one_byte_buffer_to_serial();
 
+  leds_on(LEDS_GREEN);
+
+  /* disable receiving packets by immediately flushing them */
+  cc2420_set_auto_flushrx(1); 
+
+  /* Set up DAC output */
+  ADC12CTL0 = REF2_5V | REFON; // Internal 2.5V ref on
+  DAC12_0DAT = 0x00; // DAC_0 output 0V
+  DAC12_0CTL = DAC12IR | DAC12AMP_5 | DAC12ENC;
+
+  while (!has_serial_command()) {
+    uint8_t rssi = (cc2420_rssi() + 55);
+    DAC12_0DAT = rssi << 4;
+
+    if (rssi > 100) MY_LED_ON(MY_B);
+    else MY_LED_OFF(MY_B);
   }
+
+  leds_off(LEDS_GREEN);
+  leds_off(LEDS_BLUE);
+  cc2420_set_auto_flushrx(0);
 }
-#endif
 
 /*---------------------------------------------------------------------------*/
 
@@ -327,6 +346,8 @@ void run_current_mode_loop()
     run_rssi_loop();
   else if (mode == 'N')
     run_serial_loop();
+  else if (mode == 'D')
+    run_rssi_dac();
 }
 
 /* Busy loop: we don't do any Contiki thread 'yield' thus the 'cc2420_process'
@@ -359,6 +380,10 @@ static void run_main_loop(void)
 	    cmd_ok = 1;
 	  }  else if (command_buffer[0] == 'R') {
 	    mode = 'R';
+	    update_output_buffer(0, &mode, 1);
+	    cmd_ok = 1;
+	  }  else if (command_buffer[0] == 'D') {
+	    mode = 'D';
 	    update_output_buffer(0, &mode, 1);
 	    cmd_ok = 1;
 	  }  else if (command_buffer[0] == 'V') {
