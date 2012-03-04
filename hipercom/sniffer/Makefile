@@ -19,9 +19,9 @@ include ${CONTIKI}/Makefile.include
 
 #--------------------------------------------------
 
-SNIFFER_MOTEID=1 # can be overriden from command line
+MOTEID=1 # can be overriden from command line
 
-MOTECTL=python moteSniffer.py --reset --mote-id ${SNIFFER_MOTEID}
+MOTECTL=python moteSniffer.py --mote-id ${MOTEID}
 
 sniff: ; ${MOTECTL} sniffer-wireshark
 
@@ -35,8 +35,10 @@ rssi-fast: ; ${MOTECTL} --high-speed rssi
 
 rssi-dac: ; ${MOTECTL} rssi-dac
 
+rssi-ch25: ; ${MOTECTL} --channel 25 rssi
+
 flash: sniffer.z1
-	cd .. && python MoteManager.py --mote-id ${SNIFFER_MOTEID} \
+	cd .. && python MoteManager.py --mote-id ${MOTEID} \
             --avoid-useless-reflash --firmware sniffer/sniffer.z1 flash
 
 #---------------------------------------------------------------------------

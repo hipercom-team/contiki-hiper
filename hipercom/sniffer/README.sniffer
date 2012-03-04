@@ -41,7 +41,16 @@ Running the sniffer
   . Wireshark can then be run as:
     wireshark -i lo
 
-(the Makefile can be edited so that "make sniff" and "make flash" are useful)
+  . Options are available for 'moteSniffer.py'
+     --no-reset
+       do not reset the mote before switching to sniffer mode
+     --channel <channel>
+       switch to channel <channel> for capture
+     --high-speed
+       switch the serial to high speed (2 Mbps) instead of default 115200 kbps
+
+(the Makefile can be edited so that "make sniff", "make sniff-fast", 
+ "make rssi", "make rssi-fast", "make rssi-dac" and "make flash" are useful)
 
 * LEDS:
   . The sniffer mote starts with all leds off

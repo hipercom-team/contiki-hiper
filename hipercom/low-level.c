@@ -99,13 +99,6 @@ static my_time_t my_get_clock(void)
 
 void my_uart0_init(void)
 {
-  //UCA0BR0 = 0x10;                 /* 8MHz/500000 = 16 = 0x10 */
-  //UCA0BR0 = 0x8;                  /* 8MHz/1000000 = 8 -> 1 Mbps */
-  //#if SERIAL_SPEED == 2000000
-  //UCA0BR0 = 0x5;                  /* 8MHz/1600000 = 5 -> 1.6 Mbps 
-  //but ok for 2 Mbps on receiver! */
-  //#endif
-
   IE2 &= ~UCA0TXIE;               /* Disable UCA0 TX interrupt */
   IE2 &= ~UCA0RXIE;               /* Disable UCA0 RX interrupt */
   IFG2 &= ~UCA0RXIFG;             /* Clear pending interrupts */
@@ -114,16 +107,13 @@ void my_uart0_init(void)
 
 void my_uart0_init_2Mbps()
 {
-  UCA0BR0 = 0x5;                  /* 8MHz/1600000 = 5 -> 1.6 Mbps 
-                                     but ok for 2 Mbps on receiver! */
+  UCA0BR0 = 0x5; /* 8M/1600000 = 5 -> 1.6 Mbps but ok for 2 Mbps on receiver! */
   my_uart0_init();
 }
 
 void my_uart0_switch_to_2Mbps()
 {
-  UCA0BR0 = 0x5;                  /* 8MHz/1600000 = 5 -> 1.6 Mbps 
-                                     but ok for 2 Mbps on receiver! */
-}
+  UCA0BR0 = 0x5; /* 8M/1600000 = 5 -> 1.6 Mbps but ok for 2 Mbps on receiver! */}
 
 static inline void my_uart0_write(uint8_t data)
 {
@@ -141,3 +131,12 @@ static inline uint8_t my_uart0_has_data(void)
 
 /*---------------------------------------------------------------------------*/
  
+static void my_set_channel(int channel)
+{
+  int f;
+  f = 5*(channel-11) + 352;
+  CC2420_WRITE_REG(CC2420_FSCTRL, f);
+  CC2420_STROBE(CC2420_SRXON);
+}
+
+/*---------------------------------------------------------------------------*/

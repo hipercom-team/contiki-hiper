@@ -79,6 +79,11 @@ def moteGetCmdAnswer(mote):
         #return 'CA'+lenChar+
         return mote.port.read(ord(lenChar))
 
+def dumpMote(mote):
+    while True:
+        sys.stdout.write(repr(mote.read(1)))
+        sys.stdout.flush()
+
 #---------------------------------------------------------------------------
 #---------------------------------------------------------------------------
 
@@ -109,6 +114,7 @@ class MoteSniffer:
     def __init__(self, mote):
         self.mote = mote
         self.sd = None
+        self.channel = 26
 
     #--------------------------------------------------
 
@@ -164,7 +170,7 @@ class MoteSniffer:
         timestamp = t * 537 # 7998076 Hz instead of 7995392 Hz (244*32768)
         
         packet = data[12:]
-        channel = 26
+        channel = self.channel
         packetType = 1 # data
         msg = (ZepHeader 
                + struct.pack("!BBHBBQI", packetType, channel, moteId,
@@ -190,9 +196,6 @@ class MoteSniffer:
 
     def runAsRssiSniffer(self, channel=26):
         mote.write(makeCmd("R"))
-        #while True:
-        #    sys.stdout.write(repr(mote.read(1)))
-        #    sys.stdout.flush()
         while True:
             data = moteGetCmdAnswer(mote)
             if data == 'R': 
@@ -215,7 +218,7 @@ class MoteSniffer:
 
     #--------------------------------------------------
 
-    def runAsRssiToDac(self, channel=26):
+    def runAsRssiToDac(self):
         mote.write(makeCmd("D"))
         while True:
             data = moteGetCmdAnswer(mote)
@@ -238,7 +241,7 @@ random.seed(time.time())
 DefaultMoteId = 10
 
 parser = optparse.OptionParser()
-parser.add_option("--reset", dest="shouldReset", 
+parser.add_option("--no-reset", dest="shouldNotReset", 
                   action="store_true",default=False)
 parser.add_option("--mote-id", dest="moteId", type="int",
                   default=DefaultMoteId)
@@ -247,6 +250,9 @@ parser.add_option("--tty", dest="ttyName", action="store", default=None)
 #                  default=115200)
 parser.add_option("--high-speed", dest="withHighSpeed", action="store_true",
                   default=False)
+parser.add_option("--channel", dest="channel", action="store", type="int",
+                  default=None)
+
 
 option,argList = parser.parse_args()
 
@@ -266,7 +272,7 @@ else:
 
 HighSpeed = 2000000 # 2 Mbps
 
-if option.shouldReset:
+if not option.shouldNotReset:
     mote.reset()
     time.sleep(0.1)
 
@@ -278,14 +284,28 @@ if not isSync:
 print "* connected to sniffer mote"
 
 if option.withHighSpeed:
-    print "* switching UART to high speed"
+    print "* switching UART to high speed.",
     mote.port.write(makeCmd("H"))
     time.sleep(0.1)
     mote.reOpenPort(HighSpeed)
     isSync = attemptSyncMote(mote, 0.2, 15)
     if not isSync:
         raise RuntimeError("Cannot sync with sniffer mote")
-    print "  done"
+    print "done"
+
+if option.channel != None:
+    print "* switching to channel %s." % option.channel,
+    channel = option.channel
+    if channel < 0: channel = 0
+    if channel > 26: channel = 26
+    cmd = "C" + struct.pack("B", channel)
+    mote.port.write(makeCmd(cmd))
+    answer = moteGetCmdAnswer(mote)
+    if answer != cmd: 
+        print "FATAL, unexpected command answer':", repr(answer)
+        sys.exit(1)        
+    else: print "done"
+    mote.channel = channel
 
 #--------------------------------------------------
 
@@ -308,6 +328,8 @@ elif command == "rssi":
     sniffer.runAsRssiSniffer()
 elif command == "rssi-dac":
     sniffer.runAsRssiToDac()
+elif command == "version":
+    pass
 else:
     print ("FATAL, unknown command: %s" % command)
 

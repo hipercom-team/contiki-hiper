@@ -5,6 +5,8 @@
  *            All rights reserved. Distributed only with permission.
  *---------------------------------------------------------------------------*/
 
+#define DEFAULT_CHANNEL 26
+
 /*---------------------------------------------------------------------------*/
 
 /* -- Change these only if you know what you are doing: */

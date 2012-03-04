@@ -229,11 +229,11 @@ uint8_t has_packet(void)
 
 static void run_packet_loop(void)
 {
-  leds_on(LEDS_RED);
+  MY_LED_ON(MY_R);
   for (;;) {
     if (has_packet()) {
       last_packet_counter = cc2420_packet_counter;
-      leds_toggle(LEDS_BLUE);
+      MY_LED_TOGGLE(MY_B);
       my_process_packet();
     }
 
@@ -244,8 +244,7 @@ static void run_packet_loop(void)
     }
 
     if (has_serial_command()) {
-      leds_off(LEDS_RED);
-      leds_off(LEDS_BLUE);
+      MY_LED_OFF(MY_R | MY_B);
       return;
     }
   }
@@ -261,6 +260,9 @@ typedef struct {
   uint32_t timestamp;
   uint8_t  rssi_value;
 } command_answer_rssi_t;
+
+extern int cc2420_set_channel(int c);
+
 
 static void run_rssi_loop(void)
 {
@@ -405,7 +407,7 @@ static void run_main_loop(void)
 	  }
 	} else if (command_length == 2) {
 	  if (command_buffer[0] == 'C') {
-	    cc2420_set_channel(command_buffer[0]);
+	    cc2420_set_channel(command_buffer[1]);
 	    update_output_buffer(0, command_buffer, 2);
 	    cmd_ok = 1;
 	  } 
@@ -415,6 +417,7 @@ static void run_main_loop(void)
       if (!cmd_ok) {
 	uint8_t error_code = 'E';
 	update_output_buffer(0, &error_code, 1);
+	//update_output_buffer(0, command_buffer, command_length);
       }
       serial_command_state = StateNone;
     }
@@ -448,9 +451,11 @@ PROCESS_THREAD(init_process, ev, data)
   my_timerb_init();
 
   /* set radio receiver on */
-  cc2420_set_channel(26);
+  cc2420_on();
+  cc2420_set_channel(DEFAULT_CHANNEL);
 
   /* main loop */
+  MY_LED_OFF(MY_R | MY_G | MY_B);
   run_main_loop();
 
   PROCESS_END();
