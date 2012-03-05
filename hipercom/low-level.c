@@ -45,39 +45,87 @@ volatile uint16_t my_timerb_count = 0;
 /* hijack the timerb interrupt */
 interrupt (TIMERB1_VECTOR)
 my_timerb_interrupt (void)
-{
-  int tbiv;
-
-  tbiv = TBIV;
+{  
   /* XXX: we need to test the right flags to check which interrupt was called */
-  my_timerb_count ++;
+  int tbiv = TBIV;
+  switch (tbiv) {
+  case 0x02:  /* TB2 - Zolertia SFD */
+    MY_LED_ON(MY_R + MY_G + MY_B);
+  case 0x0E: /* timer overflow */
+    my_timerb_count ++;
+    break;
+  default:
+    MY_LED_TOGGLE(MY_R + MY_G + MY_B);
+  }
 }
+
+/*--------------------------------------------------*/
+
+#if 0
+  /* XXX: we need to test the right flags to check which interrupt was called */
+  switch ( __even_in_range(TBIV, 14)) {
+  case 2:
+    my_timerb_count ++;
+    break
+  default:
+    break;
+  }
+}
+#endif
+
+#if 0
+http://old.nabble.com/__even_in_range-equivalent--td15124831.html
+
+interrupt (TIMERA1_VECTOR) __attribute__ ((naked)) tax_int(void) { 
+     //demux timer interrupts 
+     asm("add     %0, r0                  ; TAirq# + PC"::"m" (TAIV)); 
+     asm("reti                            ; CCR0 - no source"); 
+     asm("jmp ccr1                        ; CCR1"); 
+     asm("jmp ccr2                        ; CCR2"); 
+     asm("reti                            ; CCR3 - no source"); 
+     asm("reti                            ; CCR4 - no source"); 
+     asm("        br #INT_TimerA_TAOVER   ; TAOVER (follows directly)"); 
+     asm("ccr1:   br #INT_TimerA_CCR1"); 
+     asm("ccr2:   br #INT_TimerA_CCR2"); 
+} 
+
+//interrupt (TIMERB2_VECTOR)
+//my_timerb4_interrupt (void)
+//{
+//
+//}
+
+#endif
+
+
 
 /* derived from cc2420_arch_sfd_init */
 void my_timerb_init(void)
 {
   /* Need to select the special function! */
-  // P4SEL = BV(CC2420_SFD_PIN); // <--- NOT!!!
+  //P4SEL = BV(CC2420_SFD_PIN); // <--- NOT!!!
   
-  /* start timer B - 32768 ticks per second */
-  // TBCTL = TBSSEL_1 | TBCLR;
+  /* start timer B - ~8000000 ticks per second */
+  TBCTL = 
+    TBSSEL_2 /* source = SMCLK */
+    | TBCLR; /* this resets TBR, the clock divisor and count direction */
+    //| (divisor<<6)
 
-  /* start timer B - 8000000 ticks per second */
-  TBCTL = TBSSEL_2 | TBCLR; //| (divisor<<6)
-
-  
-  /* CM_3 = capture mode - capture on both edges */
-  TBCCTL1 = CM_3 | CAP | SCS;
-  TBCCTL1 |= CCIE;
+  /* Compare  1 */
+  TBCCTL1 = 
+    CM_3    /* capture on both rising and falling edges */
+    | CAP   /* capture mode (by opposition to "compare mode") */
+    | SCS   /* synchronous capture source */
+    | CCIE; /* capture/compare interrupt enable */
 
   /* Start Timer_B in continuous mode. */
-  TBCTL |= MC1;
+  TBCTL |= MC_2; /* continuous mode */
 
   /* reset time */
   my_timerb_count = 0;
   TBR = 0;
 
-  TBCTL |= TBIE; /* enable overflow interrupt */
+  TBCTL |= TBIE; /* timer B interrupt enable */
 }
 
 typedef uint32_t my_time_t;
@@ -113,7 +161,8 @@ void my_uart0_init_2Mbps()
 
 void my_uart0_switch_to_2Mbps()
 {
-  UCA0BR0 = 0x5; /* 8M/1600000 = 5 -> 1.6 Mbps but ok for 2 Mbps on receiver! */}
+  UCA0BR0 = 0x5; /* 8M/1600000 = 5 -> 1.6 Mbps but ok for 2 Mbps on receiver */
+}
 
 static inline void my_uart0_write(uint8_t data)
 {
@@ -130,7 +179,8 @@ static inline uint8_t my_uart0_has_data(void)
 #define MY_IS_UART0_BUSY ((UCA0STAT & UCBUSY))
 
 /*---------------------------------------------------------------------------*/
- 
+
+#if 0 
 static void my_set_channel(int channel)
 {
   int f;
@@ -138,5 +188,6 @@ static void my_set_channel(int channel)
   CC2420_WRITE_REG(CC2420_FSCTRL, f);
   CC2420_STROBE(CC2420_SRXON);
 }
+#endif
 
 /*---------------------------------------------------------------------------*/

@@ -101,7 +101,7 @@ type of the command, we write it as <COMMAND CODE>.
 
 The protocol for each command is as follows:
 
-* Reset command: 
+* Silent stop command: 
    . command without argument i.e. <COMMAND INVOKE ..> == ''
    . the mote stops what it was doing, and waits for the next command
    . no output
@@ -122,5 +122,8 @@ The protocol for each command is as follows:
       <link-qual> is the link quality provided by the CC2420
       <packet index> is a counter of the number of packets
       <timestamp> is the number of clock cycles (e.g. at 8 Mhz).
+
+* Channel, Rssi, Rssi-to-Dac, High-speed-serial command:
+   . XXX TODO
 
 ---------------------------------------------------------------------------
