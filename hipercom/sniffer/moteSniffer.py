@@ -5,7 +5,7 @@
 #            All rights reserved. Distributed only with permission.
 #---------------------------------------------------------------------------
 
-import sys, time, select, optparse, random, struct
+import sys, time, select, optparse, random, struct, hashlib
 import socket
 
 
@@ -108,13 +108,18 @@ zpacket = ("EX" + chr(2) + chr(1) + chr(26) + (chr(0xaa)+chr(0xbb))
 ZepPort = 17754 # 
 OperaSnifferPort = 5000
 
-
+Freq = (244*32768) # TimerB frequency
 
 class MoteSniffer:
-    def __init__(self, mote):
+    def __init__(self, mote, option):
         self.mote = mote
         self.sd = None
         self.channel = 26
+        self.lastSfdUp = None
+        self.option = option
+        if option.logFileName != None:
+            self.log = open(option.logFileName, "wb")
+        else: self.log = None
 
     #--------------------------------------------------
 
@@ -151,6 +156,30 @@ class MoteSniffer:
                 if self.outputFormat == "wireshark": self.sendAsZep(data)
                 elif self.outputFormat == "text": self.dumpAsText(data)
                 else: self.sendAsOpera(data)
+            elif data[0] == 's':
+                self.processSfd(data)
+            else:
+                sys.stdout.write("?")
+                sys.stdout.flush()
+
+    def processSfd(self, data):
+        assert data[0] == 's'
+        #print repr(data), len(data)
+        isUp, padding, clock, serialClock = struct.unpack("<BBII", data[1:])
+        #print "(",isUp, clock,")"
+        info = ("sfd", isUp, clock)
+        self.log.write(repr(info)+"\n")
+        #assert serialClock > clock
+        if isUp:
+            if self.lastSfdUp == None:
+                self.lastSfdUp = clock
+            else:
+                sys.stdout.write("?")
+                sys.stdout.flush()
+        else:
+            if self.lastSfdUp != None:
+                #print clock - self.lastSfdUp 
+                self.lastSfdUp = None
             else:
                 sys.stdout.write("?")
                 sys.stdout.flush()
@@ -184,12 +213,17 @@ class MoteSniffer:
 
     def dumpAsText(self, data):
         lost, rssi, linkQual, counter, t = struct.unpack("<BBBII", data[1:12])
-        timestamp = t / 8000000.0
+        timestamp = (t / float(Freq), t)
         packet = data[12:]
         print ("timestamp=%s pkt#%d rssi=%d linkQual=%d len=%d" % (
                 timestamp, counter, rssi, linkQual, len(packet)))
         #.ljust(10)
-        print (" " + " ".join(["%02x"%ord(x) for x in packet]))
+        if not self.option.shortInfo:
+            print (" " + " ".join(["%02x"%ord(x) for x in packet]))
+        if self.log != None:
+            packetHash = hashlib.md5(packet).hexdigest()
+            info = ("packet", packetHash, t, rssi, linkQual, counter)
+            self.log.write(repr(info)+"\n")
 
 
     #--------------------------------------------------
@@ -222,7 +256,7 @@ class MoteSniffer:
         mote.write(makeCmd("D"))
         while True:
             data = moteGetCmdAnswer(mote)
-            if data == 'D': 
+            if data == 'D':
                 print "* sniffer mote acknowledged rssi-to-dac mode"
                 continue
             elif data == 'C':
@@ -252,7 +286,10 @@ parser.add_option("--high-speed", dest="withHighSpeed", action="store_true",
                   default=False)
 parser.add_option("--channel", dest="channel", action="store", type="int",
                   default=None)
-
+parser.add_option("--log", dest="logFileName", action="store", type="string",
+                  default=None)
+parser.add_option("--short", dest="shortInfo", action="store_true", 
+                  default=False)
 
 option,argList = parser.parse_args()
 
@@ -313,7 +350,7 @@ if len(argList) == 0:
     print "# no command, exiting"
     sys.exit(0)
 
-sniffer = MoteSniffer(mote)
+sniffer = MoteSniffer(mote, option)
 command = argList[0]
 
 sniffer.lastTimeStamp = 0 #XXX

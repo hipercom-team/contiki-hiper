@@ -15,7 +15,7 @@
 #include <spi.h>
 
 #include <io.h>
-
+#include <string.h>
 
 #include "net/netstack.h"
 
@@ -183,7 +183,7 @@ uint32_t global_packet_counter = 0;
 #define RECEIVE_BUFFER_SIZE (PACKETBUF_SIZE+COMMAND_ANSWER_HEADER_LEN)
 uint8_t receive_packet_buffer[RECEIVE_BUFFER_SIZE];
 extern volatile uint16_t cc2420_sfd_start_time;
-void my_process_packet(void)
+void process_one_packet(void)
 {
   my_time_t timestamp = my_get_clock();
 
@@ -220,6 +220,42 @@ void my_process_packet(void)
   }
 }
 
+void process_one_sfd(void)
+{
+  my_time_t timestamp = my_get_clock();
+  my_sfd_event_t* sfd_record = my_sfd_pop();
+  if (sfd_record == NULL) {
+    /* not possible ! */
+    MY_LED_ON(MY_G);
+    return;
+  }
+
+  int hdrlen = 6 + sizeof(sfd_record->event_time) + sizeof(timestamp);
+
+  receive_packet_buffer[0] = COMMAND_ANSWER_CODE1;
+  receive_packet_buffer[1] = COMMAND_ANSWER_CODE2;
+  receive_packet_buffer[2] = hdrlen-3;
+  receive_packet_buffer[3] = 's';
+  receive_packet_buffer[4] = sfd_record->is_up;
+  receive_packet_buffer[5] = 0;
+
+  memcpy(receive_packet_buffer+6, 
+	 &sfd_record->event_time, sizeof(sfd_record->event_time));
+  memcpy(receive_packet_buffer+6+sizeof(sfd_record->event_time), 
+	 &timestamp, sizeof(timestamp));
+  
+  if (!OUTPUT_BUFFER_HAS_FREE_SPACE_WITH_RESERVE_FOR(hdrlen)) {
+    lost_packet++;
+    MY_LED_ON(MY_G);
+  } else {
+    int i;
+    for (i=0; i<hdrlen; i++) {
+      output_buffer[producer_offset] = receive_packet_buffer[i];
+      producer_offset = (producer_offset + 1) & OUTPUT_BUFFER_OFFSET_MASK;
+    }
+  }
+}
+
 /*--------------------------------------------------*/
 
 static inline
@@ -231,13 +267,17 @@ static void run_packet_loop(void)
 {
   MY_LED_ON(MY_R);
   for (;;) {
+
+    while (!my_sfd_is_empty())
+      process_one_sfd();
+
     if (has_packet()) {
       last_packet_counter = cc2420_packet_counter;
       MY_LED_TOGGLE(MY_B);
-      my_process_packet();
+      process_one_packet();
     }
 
-    while (!has_packet() && !has_serial_command()
+    while (!has_packet() && my_sfd_is_empty() && !has_serial_command()
 	   && producer_offset != consumer_offset) {
       my_uart0_write(output_buffer[consumer_offset]);  // uart0_writeb(...);
       consumer_offset = (consumer_offset+1) & OUTPUT_BUFFER_OFFSET_MASK;
@@ -447,9 +487,10 @@ PROCESS_THREAD(init_process, ev, data)
   //rime_mac->off(0);
   //cc2420_off();
 
-  /* initial */
+  /* initialisation */
   my_timerb_init();
-
+  my_sfd_init();
+  
   /* set radio receiver on */
   cc2420_on();
   cc2420_set_channel(DEFAULT_CHANNEL);

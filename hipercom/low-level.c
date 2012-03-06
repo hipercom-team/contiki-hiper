@@ -42,23 +42,6 @@ volatile uint16_t my_timerb_count = 0;
 
 #define MY_TICKS_PER_SECOND (244ul*0x8000ul)
 
-/* hijack the timerb interrupt */
-interrupt (TIMERB1_VECTOR)
-my_timerb_interrupt (void)
-{  
-  /* XXX: we need to test the right flags to check which interrupt was called */
-  int tbiv = TBIV;
-  switch (tbiv) {
-  case 0x02:  /* TB2 - Zolertia SFD */
-    MY_LED_ON(MY_R + MY_G + MY_B);
-  case 0x0E: /* timer overflow */
-    my_timerb_count ++;
-    break;
-  default:
-    MY_LED_TOGGLE(MY_R + MY_G + MY_B);
-  }
-}
-
 /*--------------------------------------------------*/
 
 #if 0
@@ -103,7 +86,7 @@ interrupt (TIMERA1_VECTOR) __attribute__ ((naked)) tax_int(void) {
 void my_timerb_init(void)
 {
   /* Need to select the special function! */
-  //P4SEL = BV(CC2420_SFD_PIN); // <--- NOT!!!
+
   
   /* start timer B - ~8000000 ticks per second */
   TBCTL = 
@@ -142,6 +125,79 @@ static my_time_t my_get_clock(void)
 }
 
 #define MY_GET_CLOCK_U16 (TBR)
+
+/*---------------------------------------------------------------------------*/
+
+#define MY_SFD_RECORD_LOG2_SIZE 4 /* 16 value */
+#define MY_SFD_RECORD_OFFSET_MASK (BV(MY_SFD_RECORD_LOG2_SIZE)-1)
+
+volatile uint8_t my_sfd_first = 0;
+volatile uint8_t my_sfd_last  = 0;
+
+typedef struct {
+  my_time_t event_time;
+  uint8_t   is_up;
+} my_sfd_event_t;
+
+my_sfd_event_t my_sfd_record[(1<<MY_SFD_RECORD_LOG2_SIZE)];
+
+void my_sfd_init(void)
+{
+  my_sfd_first = 0;
+  my_sfd_last = 0;
+  P4SEL |= BV(CC2420_SFD_PIN); /* activate SFD interrupts */
+}
+
+static inline uint8_t my_sfd_is_empty()
+{ return (my_sfd_first == my_sfd_last); }
+
+static inline my_sfd_event_t* my_sfd_peek()
+{ 
+  if (my_sfd_is_empty())
+    return NULL;
+  else return &(my_sfd_record[my_sfd_first]);
+}
+
+static inline my_sfd_event_t* my_sfd_pop()
+{
+  if (my_sfd_is_empty())
+    return NULL;
+  
+  my_sfd_event_t* result = &(my_sfd_record[my_sfd_first]);
+  my_sfd_first = (my_sfd_first+1) & MY_SFD_RECORD_OFFSET_MASK;
+  return result;
+}
+
+/*---------------------------------------------------------------------------*/
+
+/* hijack the timerb interrupt */
+interrupt (TIMERB1_VECTOR)
+my_timerb_interrupt (void)
+{  
+  uint16_t clock_low  = TBR;
+  uint16_t clock_high = my_timerb_count;
+  int tbiv = TBIV;
+  switch (tbiv) {
+  case 0x02:  {
+    /* TB2 - Zolertia SFD */
+    uint8_t sfd_next = (my_sfd_last+1) & MY_SFD_RECORD_OFFSET_MASK;
+    if (sfd_next != my_sfd_first) {
+      my_sfd_record[my_sfd_last].is_up = CC2420_SFD_IS_1;
+      my_sfd_record[my_sfd_last].event_time 
+	= (((uint32_t)clock_high) << 16) + (uint32_t)clock_low;
+      my_sfd_last = sfd_next;
+    } else {
+      MY_LED_ON(MY_G);
+    }
+    break;
+  }
+  case 0x0E: /* timer overflow */
+    my_timerb_count ++;
+    break;
+  default:
+    MY_LED_TOGGLE(MY_G);
+  }
+}
 
 /*---------------------------------------------------------------------------*/
 
