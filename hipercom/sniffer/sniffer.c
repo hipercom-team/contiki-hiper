@@ -488,7 +488,8 @@ PROCESS_THREAD(init_process, ev, data)
   //cc2420_off();
 
   /* initialisation */
-  my_timerb_init();
+  //my_timerb_init(1); /* 8Mhz resolution clock */
+  my_timerb_init(0); /* 32 Khz resolution clock */
   my_sfd_init();
   
   /* set radio receiver on */

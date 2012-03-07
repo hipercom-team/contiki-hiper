@@ -83,17 +83,21 @@ interrupt (TIMERA1_VECTOR) __attribute__ ((naked)) tax_int(void) {
 
 
 /* derived from cc2420_arch_sfd_init */
-void my_timerb_init(void)
+void my_timerb_init(uint8_t use8Mhz)
 {
-  /* Need to select the special function! */
-
-  
   /* start timer B - ~8000000 ticks per second */
-  TBCTL = 
-    TBSSEL_2 /* source = SMCLK */
-    | TBCLR; /* this resets TBR, the clock divisor and count direction */
+  if (use8Mhz) {
+    TBCTL = 
+      TBSSEL_2 /* source = SMCLK */
+      | TBCLR; /* this resets TBR, the clock divisor and count direction */
     //| (divisor<<6)
-
+  } else {
+    TBCTL = 
+      TBSSEL_1 /* source = ACLK */
+      | TBCLR; /* this resets TBR, the clock divisor and count direction */
+    //| (divisor<<6)
+  }
+   
   /* Compare  1 */
   TBCCTL1 = 
     CM_3    /* capture on both rising and falling edges */
@@ -113,7 +117,7 @@ void my_timerb_init(void)
 
 typedef uint32_t my_time_t;
 
-static my_time_t my_get_clock(void)
+static inline my_time_t my_get_clock(void)
 {
   for(;;) {
     uint16_t clock_high1 = my_timerb_count;

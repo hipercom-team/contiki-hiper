@@ -29,6 +29,8 @@ sniff-fast: ; ${MOTECTL} --high-speed sniffer-wireshark
 
 dump: ; ${MOTECTL} sniffer-text
 
+opera: ; ${MOTECTL} sniffer-opera
+
 short: ; ${MOTECTL} --short --log packet-${MOTEID}.log sniffer-text
 
 rssi: ; ${MOTECTL} rssi

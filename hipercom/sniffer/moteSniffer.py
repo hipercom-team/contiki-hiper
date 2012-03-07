@@ -168,7 +168,8 @@ class MoteSniffer:
         isUp, padding, clock, serialClock = struct.unpack("<BBII", data[1:])
         #print "(",isUp, clock,")"
         info = ("sfd", isUp, clock)
-        self.log.write(repr(info)+"\n")
+        if self.log != None:
+            self.log.write(repr(info)+"\n")
         #assert serialClock > clock
         if isUp:
             if self.lastSfdUp == None:
@@ -191,7 +192,7 @@ class MoteSniffer:
         timestamp = t*4 
         packet = data[12:]
         msg = struct.pack("<BIQB", 0, counter, timestamp, len(packet)) +packet
-        self.sd.sendto(msg, ("", sendPort))
+        self.sd.sendto(msg, ("", OperaSnifferPort))
 
     def sendAsZep(self, data):
         lost, rssi, linkQal, counter, t = struct.unpack("<BBBII", data[1:12])

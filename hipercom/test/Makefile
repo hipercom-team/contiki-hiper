@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------
-#                  Examples of use of 'low-level.c'
+#            Examples of use of 'low-level.c' and performance tools
 #        Cedric Adjih, Hipercom Project-Team, Inria Paris-Rocquencourt
 #                       Copyright 2012 Inria. 
 #            All rights reserved. Distributed only with permission.
@@ -12,7 +12,11 @@ endif
 CONTIKI_PROJECT = example-clock
 CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
 
-all: ${CONTIKI_PROJECT}
+all: ${CONTIKI_PROJECT} all-perf
+
+all-perf: perf-send-ch25.z1 perf-send-ch26.z1 \
+          perf-send-fast-ch25.z1 perf-send-fast-ch26.z1 \
+          perf-recv-ch25.z1 perf-recv-ch26.z1
 
 CONTIKI=../../
 include ${CONTIKI}/Makefile.include
