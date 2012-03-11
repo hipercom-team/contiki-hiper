@@ -203,9 +203,11 @@ void cc2420_set_cca_threshold(int value);
 
 
 /*---------------------------------------------------------------------------*/
-/* C. Adjih - Hipercom 2011 : "extensions" */
+/* C. Adjih - Hipercom 2012 : "extensions" */
 
 uint8_t cc2420_set_auto_flushrx(uint8_t new_value);
+uint8_t cc2420_set_send_with_cca(uint8_t new_value);
+int cc2420_send(const void *payload, unsigned short payload_len);
 
 /*---------------------------------------------------------------------------*/
 

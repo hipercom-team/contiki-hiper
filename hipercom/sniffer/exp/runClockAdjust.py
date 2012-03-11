@@ -9,6 +9,9 @@ f = open("allclock.pydata")
 data = eval(f.read().strip())
 f.close()
 
+freq = 8000000
+freq = 32768
+
 #---------------------------------------------------------------------------
 
 nodeList = data["nodeList"]
@@ -29,7 +32,7 @@ coef = [ float(finalClockList[i]) / float(finalClockList[0])
          for i in range(nbNode) ]
 
 for syncIntervalSec in [5, 25, 100]:
-    syncInterval = syncIntervalSec * (8000000)
+    syncInterval = syncIntervalSec * (freq)
     
     f = open("time-sync%s.dat" % syncIntervalSec, "w")
     c = coef[:]
@@ -40,6 +43,7 @@ for syncIntervalSec in [5, 25, 100]:
                   / float(lastSyncClock[0] - clockList[0])
                   for i in range(nbNode) ]
             lastSyncClock = clockList[:]
+            print lastSyncClock, "*", syncInterval
         thClock = [ (clockList[0]-lastSyncClock[0]) * c[i] + lastSyncClock[i]
                     for i in range(nbNode) ]
         clock = [float(clockList[0])] + [ thClock[i] - clockList[i] 

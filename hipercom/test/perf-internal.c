@@ -50,6 +50,7 @@ unsigned char send_buffer[140];
 unsigned char recv_buffer[140];
 
 #define CONTENT_SIZE 100
+//#define CONTENT_SIZE 4
 
 static volatile long last_seq_num = -1;
 static volatile long stat_bad_size = 0;
@@ -94,11 +95,18 @@ const static struct abc_callbacks abc_callback = { general_packet_recv };
 
 /*---------------------------------------------------------------------------*/
 
-#ifndef ACTION_SEND_FAST
+#if !defined(ACTION_SEND_FAST) && !defined(SEND_DELAY)
 #define SEND_DELAY (CLOCK_SECOND/2)
 #endif /* ACTION_SEND_FAST */
 
 PROCESS(sender_thread, "sender");
+
+/* 
+   Basic frame
+   0x41 0x88 <seq> <pad id = 0xcb 0xab> <dst = 0xffff> <src = 0x0500>
+*/
+
+#define DIRECT_SEND
 
 PROCESS_THREAD(sender_thread, ev, data)
 {
@@ -114,10 +122,29 @@ PROCESS_THREAD(sender_thread, ev, data)
   memcpy(send_buffer+sizeof(i), &originator, sizeof(originator));
 
   for (;;) {
+
+#ifndef DIRECT_SEND
     memcpy(send_buffer, &i, sizeof(i));
     i++;
     packetbuf_copyfrom(send_buffer, CONTENT_SIZE);
     abc_send(&abc_connection);
+#else
+    send_buffer[0] = 0x41;
+    send_buffer[1] = 0x88;
+    send_buffer[2] = i & 0xff;
+    send_buffer[3] = 0xcd;
+    send_buffer[4] = 0xab;
+    send_buffer[5] = 0xff;
+    send_buffer[6] = 0xff;
+    send_buffer[7] = node_id;
+    send_buffer[8] = 0;
+    uint8_t status = 0;
+    do {
+      CC2420_GET_STATUS(status);
+    } while(status & BV(CC2420_TX_ACTIVE));
+
+    cc2420_send(send_buffer, 9);
+#endif
 
 #ifdef SEND_DELAY
   etimer_set(&wait_timer, SEND_DELAY);
@@ -167,6 +194,7 @@ PROCESS_THREAD(init_process, ev, data)
   abc_open(&abc_connection, 0xee, &abc_callback);
 
   cc2420_set_channel(CHANNEL);
+  cc2420_set_send_with_cca(0);
 
 #if defined(ACTION_SEND) || defined(ACTION_SEND_FAST)
   process_start(&sender_thread, NULL);
