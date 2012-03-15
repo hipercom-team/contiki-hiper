@@ -33,4 +33,13 @@ flash: ${FIRMWARE}.z1
 	cd .. && python MoteManager.py --mote-id ${MOTEID} \
             --avoid-useless-reflash --firmware test/${FIRMWARE}.z1 flash
 
+flash-test: perf-send-ch26.z1
+	cd .. && python MoteManager.py --mote-id ${MOTEID} \
+            --avoid-useless-reflash --firmware test/perf-send-ch26.z1 flash
+
+CH11MOTEID=8
+flash-send-ch11: perf-send-ch11.z1
+	cd .. && python MoteManager.py --mote-id ${CH11MOTEID} \
+            --avoid-useless-reflash --firmware test/perf-send-ch11.z1 flash
+
 #---------------------------------------------------------------------------

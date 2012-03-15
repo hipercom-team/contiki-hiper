@@ -387,7 +387,11 @@ static void run_rssi_dac(void)
 
 /*---------------------------------------------------------------------------*/
 
+#ifndef DEFAULT_SNIFFER_MODE
 char mode = 'N'; /* none */
+#else
+char mode = DEFAULT_SNIFFER_MODE;
+#endif
 
 void run_current_mode_loop()
 {

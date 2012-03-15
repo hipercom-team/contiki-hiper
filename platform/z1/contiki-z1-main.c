@@ -273,7 +273,9 @@ main(int argc, char **argv)
   set_rime_addr();
 
   cc2420_init();
+  printf("P2\n");
   accm_init();
+  printf("P3\n");   
 
   {
     uint8_t longaddr[8];

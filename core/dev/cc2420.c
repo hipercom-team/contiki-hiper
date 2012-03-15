@@ -53,7 +53,7 @@
 
 #include "sys/timetable.h"
 
-#define WITH_SEND_CCA 1
+//#define WITH_SEND_CCA 1
 
 #define FOOTER_LEN 2
 
@@ -119,6 +119,8 @@ volatile uint8_t cc2420_sfd_counter;
 volatile uint16_t cc2420_sfd_start_time;
 volatile uint16_t cc2420_sfd_end_time;
 
+volatile uint8_t should_send_with_cca = 1;
+
 static volatile uint16_t last_packet_timestamp;
 /*---------------------------------------------------------------------------*/
 PROCESS(cc2420_process, "CC2420 driver");
@@ -132,7 +134,8 @@ static int cc2420_read(void *buf, unsigned short bufsize);
 
 static int cc2420_prepare(const void *data, unsigned short len);
 static int cc2420_transmit(unsigned short len);
-static int cc2420_send(const void *data, unsigned short len);
+//static 
+int cc2420_send(const void *data, unsigned short len);
 
 static int cc2420_receiving_packet(void);
 static int pending_packet(void);
@@ -375,13 +378,17 @@ cc2420_transmit(unsigned short payload_len)
 #define LOOP_20_SYMBOLS CC2420_CONF_SYMBOL_LOOP_COUNT
 #endif
 
-#if WITH_SEND_CCA
-  strobe(CC2420_SRXON);
-  BUSYWAIT_UNTIL(status() & BV(CC2420_RSSI_VALID), RTIMER_SECOND / 10);
-  strobe(CC2420_STXONCCA);
-#else /* WITH_SEND_CCA */
-  strobe(CC2420_STXON);
-#endif /* WITH_SEND_CCA */
+  //#if WITH_SEND_CCA
+  if (should_send_with_cca) {
+    strobe(CC2420_SRXON);
+    BUSYWAIT_UNTIL(status() & BV(CC2420_RSSI_VALID), RTIMER_SECOND / 10);
+    strobe(CC2420_STXONCCA);
+  } else {
+    //#else /* WITH_SEND_CCA */
+    strobe(CC2420_STXON);
+    //#endif /* WITH_SEND_CCA */
+  }
+
   for(i = LOOP_20_SYMBOLS; i > 0; i--) {
     if(CC2420_SFD_IS_1) {
       {
@@ -478,7 +485,8 @@ cc2420_prepare(const void *payload, unsigned short payload_len)
   return 0;
 }
 /*---------------------------------------------------------------------------*/
-static int
+// static 
+int
 cc2420_send(const void *payload, unsigned short payload_len)
 {
   cc2420_prepare(payload, payload_len);
@@ -912,6 +920,14 @@ void cc2420_set_no_addr_filter(void)
   uint16_t reg = getreg(CC2420_MDMCTRL0);
   reg &= ~(AUTOACK | ADR_DECODE); /* no address recognition */
   setreg(CC2420_MDMCTRL0, reg);
+}
+
+uint8_t
+cc2420_set_send_with_cca(uint8_t new_value)
+{
+  uint8_t result = should_send_with_cca;
+  should_send_with_cca = new_value;
+  return result;
 }
 
 /*---------------------------------------------------------------------------*/
