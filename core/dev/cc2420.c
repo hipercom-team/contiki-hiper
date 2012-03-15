@@ -904,4 +904,14 @@ cc2420_set_auto_flushrx(uint8_t new_value)
   return result;
 }
 
+void cc2420_set_no_addr_filter(void)
+{
+  /* see SWRS014B p 64 */
+
+  /* Turn on/off automatic packet acknowledgment and address decoding. */
+  uint16_t reg = getreg(CC2420_MDMCTRL0);
+  reg &= ~(AUTOACK | ADR_DECODE); /* no address recognition */
+  setreg(CC2420_MDMCTRL0, reg);
+}
+
 /*---------------------------------------------------------------------------*/

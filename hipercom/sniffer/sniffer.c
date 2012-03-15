@@ -495,6 +495,7 @@ PROCESS_THREAD(init_process, ev, data)
   /* set radio receiver on */
   cc2420_on();
   cc2420_set_channel(DEFAULT_CHANNEL);
+  cc2420_set_no_addr_filter();
 
   /* main loop */
   MY_LED_OFF(MY_R | MY_G | MY_B);

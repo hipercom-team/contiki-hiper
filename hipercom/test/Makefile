@@ -23,13 +23,14 @@ include ${CONTIKI}/Makefile.include
 
 #--------------------------------------------------
 
-MOTEID=2 # can be overriden from command line
+MOTEID=1 # can be overriden from command line
+FIRMWARE=example-clock # can also be overriden
 
 dump:
 	cd .. && python MoteManager.py --mote-id ${MOTEID} reset dump
 
-flash: example-clock.z1
+flash: ${FIRMWARE}.z1
 	cd .. && python MoteManager.py --mote-id ${MOTEID} \
-            --avoid-useless-reflash --firmware test/example-clock.z1 flash
+            --avoid-useless-reflash --firmware test/${FIRMWARE}.z1 flash
 
 #---------------------------------------------------------------------------

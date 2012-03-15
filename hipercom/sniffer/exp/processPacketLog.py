@@ -120,6 +120,9 @@ diffClock = ",".join([
 
 # t_i = (1+coef_i) * t_0
 
+print finalClockList
+exitNow
+
 prec = (1L << 64L)
 #prec = 1.0
 coef = [ ((finalClockList[i]-finalClockList[0])*prec) // finalClockList[0] for i in range(nbNode) ]
