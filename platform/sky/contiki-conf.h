@@ -11,7 +11,8 @@
 #endif /* PLATFORM_CONF_H */
 
 #ifndef NETSTACK_CONF_MAC
-#define NETSTACK_CONF_MAC     csma_driver
+//#define NETSTACK_CONF_MAC     csma_driver
+#define NETSTACK_CONF_MAC nullmac_driver
 #endif /* NETSTACK_CONF_MAC */
 
 #ifndef NETSTACK_CONF_RDC
