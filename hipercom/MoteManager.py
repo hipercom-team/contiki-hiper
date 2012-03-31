@@ -48,6 +48,7 @@ class MoteManager:
         for line in moteStr.split("\n"):
             line = line.strip()
             if line == "": continue
+            if line.startswith("No devices found."): continue
             moteName,ttyName,model = line.split(",")
             result.append((moteName,(ttyName,moteType)))
 

@@ -179,6 +179,9 @@ static void run_serial_loop(void)
 
 /*---------------------------------------------------------------------------*/
 
+extern int cc2420_set_channel(int c);
+int current_channel = DEFAULT_CHANNEL;
+
 extern volatile uint8_t cc2420_packet_counter; // added in cc2420.c
 uint8_t last_packet_counter = 0;
 unsigned int lost_packet = 0;
@@ -265,14 +268,20 @@ void process_one_sfd(void)
 
 /*--------------------------------------------------*/
 
+
 static inline
 uint8_t has_packet(void)
 { return cc2420_packet_counter != last_packet_counter; } 
 
-
 static void run_packet_loop(void)
 {
   MY_LED_ON(MY_R);
+#ifdef CONTIKI_TARGET_SKY
+  // XXX" this is currently an hack because can't call in init for some reason
+  cc2420_set_channel(current_channel); // XXX
+  cc2420_set_no_addr_filter(); // XXX
+#endif
+
   for (;;) {
 
     while (!my_sfd_is_empty())
@@ -308,8 +317,6 @@ typedef struct {
   uint8_t  rssi_value;
 } command_answer_rssi_t;
 
-extern int cc2420_set_channel(int c);
-
 
 static void run_rssi_loop(void)
 {
@@ -321,6 +328,11 @@ static void run_rssi_loop(void)
   answer.command_len = sizeof(command_answer_rssi_t) - 3;
   answer.command_subcode = 'r';
 
+#ifdef CONTIKI_TARGET_SKY
+  // XXX" this is currently an hack because can't call in init for some reason
+  cc2420_set_channel(current_channel); // XXX
+  cc2420_set_no_addr_filter(); // XXX
+#endif
   cc2420_set_auto_flushrx(1); /* disable receiving packets by flushing them */
 
   for (;;) {
@@ -356,6 +368,13 @@ static void run_rssi_loop(void)
 
 static void run_rssi_dac(void)
 {
+#ifdef CONTIKI_TARGET_SKY
+  // XXX" this is currently an hack because can't call in init for some reason
+  cc2420_set_channel(current_channel); // XXX
+  cc2420_set_no_addr_filter(); // XXX
+#endif
+  cc2420_set_auto_flushrx(1); /* disable receiving packets by flushing them */
+
   /* empty first the serial buffer */
   while (producer_offset != consumer_offset)
     send_one_byte_buffer_to_serial();
@@ -365,26 +384,14 @@ static void run_rssi_dac(void)
   /* disable receiving packets by immediately flushing them */
   cc2420_set_auto_flushrx(1); 
 
-  /* Set up DAC output */
-  ADC12CTL0 = REF2_5V | REFON; // Internal 2.5V ref on
-  DAC12_0DAT = 0x00; // DAC_0 output 0V
-  DAC12_0CTL = DAC12IR | DAC12AMP_5 | DAC12ENC;
-
-#if 0
-  /* Set up P4 output */
-  P4SEL &= ~(1<<2); // P4.2    is selected as I/O
-  P4DIR |= (1<<2);  // P4.2    is output
-  P4OUT |= (1<<2); // P4.2    set to 1
-#endif
+  my_dac_init();
 
   while (!has_serial_command()) {
     uint8_t rssi = (cc2420_rssi() + 55);
-    DAC12_0DAT = rssi << 4;
+    my_dac_set_output(rssi << 4);
 
     if (rssi > 40) MY_LED_ON(MY_B);
     else MY_LED_OFF(MY_B);
-
-    // P4OUT ^= (1<<2);
   }
 
   leds_off(LEDS_GREEN);
@@ -458,7 +465,8 @@ static void run_main_loop(void)
 	  }
 	} else if (command_length == 2) {
 	  if (command_buffer[0] == 'C') {
-	    cc2420_set_channel(command_buffer[1]);
+	    current_channel = command_buffer[1];
+	    cc2420_set_channel(current_channel);
 	    update_output_buffer(0, command_buffer, 2);
 	    cmd_ok = 1;
 	  } 
@@ -493,28 +501,16 @@ PROCESS_THREAD(init_process, ev, data)
   my_timerb_init(USE_8MHZ_RESOLUTION); /* 32 kHz resol. clock (KiHz) or 8 MHz*/
   my_sfd_init();
 
-  
-  /* set radio receiver on */
+
 #ifndef CONTIKI_TARGET_SKY
+  /* set radio receiver on */
   cc2420_on();
-  cc2420_set_channel(DEFAULT_CHANNEL);
+  cc2420_set_channel(current_channel);
   cc2420_set_no_addr_filter();
 #else
 #warning "*** XXX - NOT CONFIGURING RADIO"
+  printf("!!! XXX\n");
 #endif
-
-
-#if 0
-  my_uart_init();
-  char data = '?';
-  for (;;) {
-    my_uart_write('*');
-    while (!my_uart_has_data()) ;
-    data = my_uart_read();
-    my_uart_write(data+1);
-  } 
-#endif
-
 
   /* main loop */
   MY_LED_OFF(MY_R | MY_G | MY_B);

@@ -179,6 +179,19 @@ void my_sfd_init(void)
   P4SEL |= BV(CC2420_SFD_PIN); /* activate SFD interrupts */
 }
 
+/*---------------------------------------------------------------------------*/
+
+void my_dac_init(void)
+{
+  /* Set up DAC output */
+  ADC12CTL0 = REF2_5V | REFON; // Internal 2.5V ref on
+  DAC12_0DAT = 0x00; // DAC_0 output 0V
+  DAC12_0CTL = DAC12IR | DAC12AMP_7 | DAC12ENC;
+}
+
+static inline void my_dac_set_output(unsigned int value)
+{ DAC12_0DAT = value; }
+
 /*---------------------------------------------------------------------------
  * Platform specific files
  *---------------------------------------------------------------------------*/

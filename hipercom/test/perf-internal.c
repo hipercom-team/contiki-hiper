@@ -17,7 +17,7 @@
 #include "net/rime/unicast.h"
 #include "random.h"
 
-#include "dev/adxl345.h"
+//#include "dev/adxl345.h"
 #include "node-id.h"
 
 #include "cc2420.h"
@@ -106,7 +106,7 @@ PROCESS(sender_thread, "sender");
    0x41 0x88 <seq> <pad id = 0xcb 0xab> <dst = 0xffff> <src = 0x0500>
 */
 
-#define DIRECT_SEND
+// #define DIRECT_SEND
 
 PROCESS_THREAD(sender_thread, ev, data)
 {

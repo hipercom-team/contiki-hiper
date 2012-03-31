@@ -60,3 +60,24 @@ static inline uint8_t my_uart_has_data(void)
 { return IFG2 & URXIFG1; }
 
 /*---------------------------------------------------------------------------*/
+
+#define MY_IO_MASK (1<<3)
+
+void my_io_init(void)
+{
+  /* Set up P3 output */
+  P2SEL &= ~MY_IO_MASK; // P3.x    is selected as I/O
+  P2DIR |= MY_IO_MASK;  // P3.x    is output
+  P2OUT |= MY_IO_MASK; // P3.x   set to 1
+}
+
+static inline void my_io_set_output(unsigned int value)
+{
+  if (value == 0) P2OUT |= MY_IO_MASK;
+  else P2OUT &= ~MY_IO_MASK;
+}
+
+static inline void my_io_toggle()
+{  P2OUT ^= MY_IO_MASK; }
+
+/*---------------------------------------------------------------------------*/

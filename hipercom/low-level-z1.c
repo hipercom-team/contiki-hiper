@@ -86,10 +86,30 @@ static inline uint8_t my_uart_has_data(void)
 
 /*---------------------------------------------------------------------------*/
 
+void my_io_init(void)
+{
+  /* Set up P4 output */
+  P4SEL &= ~(1<<2); // P4.2    is selected as I/O
+  P4DIR |= (1<<2);  // P4.2    is output
+  P4OUT |= (1<<2); // P4.2    set to 1
+}
+
+static inline void my_io_set_output(unsigned int value)
+{
+  if (value == 0) P4OUT |= (1<<2);
+  else P4OUT &= ~(1<<2);
+}
+
+static inline void my_io_toggle(void)
+{ P4OUT ^= (1<<2); }
+
+/*---------------------------------------------------------------------------*/
+
 #if 0 
+/* copied from elsewhere */
 static void my_set_channel(int channel)
 {
-  int f;
+  int f; 
   f = 5*(channel-11) + 352;
   CC2420_WRITE_REG(CC2420_FSCTRL, f);
   CC2420_STROBE(CC2420_SRXON);
