@@ -80,7 +80,7 @@ for packetId in packetList:
         clockList = [clockTable[nodeId] for nodeId in nodeList]
         if baseClockList == None:
             baseClockList = clockList
-            print "baseClock:", baseClockList
+            print "(initial clocks)", baseClockList
         clockList = [ clockList[i] - baseClockList[i] for i in range(nbNode) ]
         allClockList.append(clockList)
         #if clockList[0] < 0: print clockList
@@ -120,18 +120,22 @@ diffClock = ",".join([
 
 # t_i = (1+coef_i) * t_0
 
+print "(final clocks)",
 print finalClockList
-exitNow
+#exitNow
 
 prec = (1L << 64L)
 #prec = 1.0
 coef = [ ((finalClockList[i]-finalClockList[0])*prec) // finalClockList[0] for i in range(nbNode) ]
 
+
 coef = [ float(x)/float(prec) for x in coef ]
-#print coef
+print "(relative drift)",
+print coef
+#exitNow
 
 correctedClock = ",".join([
-        "'packet-time.log' u ($1/FREQ):((($%d-$1) - %lf * $1)/FREQ) w dots" 
+        "'packet-time.log' u ($1/FREQ):((($%d-$1) - %s* $1)/FREQ) w dots" 
         %(i+1, coef[i]) for i in range(1, nbNode)])
 
 #diffClock = ",".join([
