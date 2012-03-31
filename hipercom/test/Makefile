@@ -47,4 +47,10 @@ flash-send-ch11: perf-send-ch11.${TARGET}
 	cd .. && python MoteManager.py --mote-id ${CH11MOTEID} \
         --avoid-useless-reflash --firmware test/perf-send-ch11.${TARGET} flash
 
+
+myclean:
+	make clean TARGET=sky
+	make clean TARGET=z1
+	rm -f *.sky
+
 #---------------------------------------------------------------------------

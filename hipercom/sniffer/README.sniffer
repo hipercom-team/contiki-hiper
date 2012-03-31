@@ -74,6 +74,15 @@ Installation is a the installation of a normal ppa, e.g.:
 
 ---------------------------------------------------------------------------
 
+TODO:
+
+- handle uart errors (e.g.: URCTL1 & RXERR etc...)
+  (already did for TelosB:  U1TCTL &= ~URXSE;)
+- maybe undo more of cpu/msp430/f1xxx/uart1.c uart1_init 
+  DMA initialisation (TelosB)
+
+---------------------------------------------------------------------------
+
 Internals
 ---------
 

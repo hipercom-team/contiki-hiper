@@ -108,7 +108,8 @@ zpacket = ("EX" + chr(2) + chr(1) + chr(26) + (chr(0xaa)+chr(0xbb))
 ZepPort = 17754 # 
 OperaSnifferPort = 5000
 
-Freq = (244*32768) # TimerB frequency
+FreqHigh = (244*32768) # TimerB frequency (almost 8 MHz)
+FreqLow = (32768) # TimerB frequency (32 KiHz)
 
 class MoteSniffer:
     def __init__(self, mote, option):
@@ -214,11 +215,12 @@ class MoteSniffer:
 
     def dumpAsText(self, data):
         lost, rssi, linkQual, counter, t = struct.unpack("<BBBII", data[1:12])
-        timestamp = (t / float(Freq), t)
+        if lost & 1 == 0: freq = FreqLow
+        else: freq = FreqHigh
+        timestamp = (t / float(freq), t)
         packet = data[12:]
         print ("timestamp=%s pkt#%d rssi=%d linkQual=%d len=%d" % (
                 timestamp, counter, rssi, linkQual, len(packet)))
-        #.ljust(10)
         if not self.option.shortInfo:
             print (" " + " ".join(["%02x"%ord(x) for x in packet]))
         if self.log != None:

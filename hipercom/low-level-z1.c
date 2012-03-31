@@ -51,7 +51,7 @@ interrupt (TIMERA1_VECTOR) __attribute__ ((naked)) tax_int(void) {
 
 /*---------------------------------------------------------------------------*/
 
-void my_uart0_init(void)
+void my_uart_init(void)
 {
   IE2 &= ~UCA0TXIE;               /* Disable UCA0 TX interrupt */
   IE2 &= ~UCA0RXIE;               /* Disable UCA0 RX interrupt */
@@ -59,30 +59,30 @@ void my_uart0_init(void)
   IFG2 &= ~UCA0TXIFG;
 }
 
-void my_uart0_init_2Mbps()
+void my_uart_init_2Mbps()
 {
   UCA0BR0 = 0x5; /* 8M/1600000 = 5 -> 1.6 Mbps but ok for 2 Mbps on receiver! */
-  my_uart0_init();
+  my_uart_init();
 }
 
-void my_uart0_switch_to_2Mbps()
+void my_uart_switch_to_2Mbps()
 {
   UCA0BR0 = 0x5; /* 8M/1600000 = 5 -> 1.6 Mbps but ok for 2 Mbps on receiver */
 }
 
-static inline void my_uart0_write(uint8_t data)
+static inline void my_uart_write(uint8_t data)
 {
   while((UCA0STAT & UCBUSY));
   UCA0TXBUF = data;
 }
 
-static inline uint8_t my_uart0_read(void)
+static inline uint8_t my_uart_read(void)
 { return UCA0RXBUF; }
 
-static inline uint8_t my_uart0_has_data(void)
+static inline uint8_t my_uart_has_data(void)
 { return IFG2 & UCA0RXIFG; }
 
-#define MY_IS_UART0_BUSY ((UCA0STAT & UCBUSY))
+#define MY_IS_UART_BUSY ((UCA0STAT & UCBUSY))
 
 /*---------------------------------------------------------------------------*/
 

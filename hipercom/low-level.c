@@ -25,7 +25,7 @@ typedef uint32_t my_time_t;
 
 /*---------------------------------------------------------------------------*/
 
-#define MY_SFD_RECORD_LOG2_SIZE 4 /* 16 value */
+#define MY_SFD_RECORD_LOG2_SIZE 4 /* 16 values */
 #define MY_SFD_RECORD_OFFSET_MASK (BV(MY_SFD_RECORD_LOG2_SIZE)-1)
 
 volatile uint8_t my_sfd_first = 0;
@@ -149,7 +149,7 @@ my_timerb_interrupt (void)
   int tbiv = TBIV;
   switch (tbiv) {
   case 0x02:  {
-    /* TB2 - Zolertia SFD */
+    /* TB2 - Zolertia SFD */ /* also TelosB */
     uint8_t sfd_next = (my_sfd_last+1) & MY_SFD_RECORD_OFFSET_MASK;
     if (sfd_next != my_sfd_first) {
       my_sfd_record[my_sfd_last].is_up = CC2420_SFD_IS_1;
@@ -159,6 +159,7 @@ my_timerb_interrupt (void)
     } else {
       MY_LED_ON(MY_G);
     }
+    //if (CC2420_SFD_IS_1) { MY_LED_TOGGLE(MY_B); }
     break;
   }
   case 0x0E: /* timer overflow */

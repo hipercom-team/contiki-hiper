@@ -21,7 +21,7 @@ include ${CONTIKI}/Makefile.include
 
 #--------------------------------------------------
 
-MOTEID=10 # can be overriden from command line
+MOTEID?=10 # can be overriden from command line
 
 MOTECTL=python moteSniffer.py --mote-id ${MOTEID}
 
@@ -50,5 +50,10 @@ flash: sniffer.${TARGET}
 flash-rssi: rssi-sniffer.${TARGET}
 	cd .. && python MoteManager.py --mote-id ${MOTEID} \
          --avoid-useless-reflash --firmware sniffer/rssi-sniffer.${TARGET} flash
+
+#---------------------------------------------------------------------------
+
+save:
+	(printf "TARGET=${TARGET}\nMOTEID=${MOTEID}\n" > Makefile.target)
 
 #---------------------------------------------------------------------------

@@ -27,11 +27,14 @@
 
 /*---------------------------------------------------------------------------*/
 
+#define USE_8MHZ_RESOLUTION 0
+
+/*---------------------------------------------------------------------------*/
+
 #include "../low-level.c"
 
 #define SNIFFER_VERSION_MAJOR 0
-#define SNIFFER_VERSION_MINOR 1
-
+#define SNIFFER_VERSION_MINOR 2
 
 #define COMMAND_INVOKE_CODE1 'C'
 #define COMMAND_INVOKE_CODE2 'I'
@@ -55,7 +58,8 @@ serial_command_state_t serial_command_state = StateNone;
 
 uint8_t process_one_serial()
 {
-  uint8_t data = my_uart0_read();
+  MY_LED_ON(MY_B); // XXX
+  uint8_t data = my_uart_read();
   switch (serial_command_state) {
   case StateNone:
     if (data == COMMAND_INVOKE_CODE1)
@@ -106,7 +110,7 @@ uint8_t has_serial_command(void)
 {
   if (serial_command_state == StateComplete)
     return 1;
-  else if (!my_uart0_has_data())
+  else if (!my_uart_has_data())
     return 0;
   else return process_one_serial();
 }
@@ -137,7 +141,7 @@ static inline void append_output_buffer(uint8_t data)
 
 static inline void send_one_byte_buffer_to_serial(void)
 {
-  my_uart0_write(output_buffer[consumer_offset]);  // uart0_writeb(...);
+  my_uart_write(output_buffer[consumer_offset]);  // uart0_writeb(...);
   consumer_offset = (consumer_offset+1) & OUTPUT_BUFFER_OFFSET_MASK;     
 }
 
@@ -159,9 +163,12 @@ static void update_output_buffer(uint8_t should_reset, void* data, int length)
 
 static void run_serial_loop(void)
 {
+  MY_LED_ON(MY_R); // XXX
   for (;;) {
+    MY_LED_TOGGLE(MY_R); // XXX
+    MY_LED_TOGGLE(MY_G); // XXX
     while (!has_serial_command() && producer_offset != consumer_offset) {
-      my_uart0_write(output_buffer[consumer_offset]);  // uart0_writeb(...);
+      my_uart_write(output_buffer[consumer_offset]);  // uart0_writeb(...);
       consumer_offset = (consumer_offset+1) & OUTPUT_BUFFER_OFFSET_MASK;
     }
 
@@ -195,7 +202,7 @@ void process_one_packet(void)
   receive_packet_buffer[2] = len+hdrlen-3;
 
   receive_packet_buffer[3] = 'p';
-  receive_packet_buffer[4] = lost_packet & 0xff;
+  receive_packet_buffer[4] = ((lost_packet & 0x7fu)<<1) | USE_8MHZ_RESOLUTION;
 
   receive_packet_buffer[5] = packetbuf_attr(PACKETBUF_ATTR_RSSI);
   receive_packet_buffer[6] = packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY);
@@ -279,7 +286,7 @@ static void run_packet_loop(void)
 
     while (!has_packet() && my_sfd_is_empty() && !has_serial_command()
 	   && producer_offset != consumer_offset) {
-      my_uart0_write(output_buffer[consumer_offset]);  // uart0_writeb(...);
+      my_uart_write(output_buffer[consumer_offset]);  // uart0_writeb(...);
       consumer_offset = (consumer_offset+1) & OUTPUT_BUFFER_OFFSET_MASK;
     }
 
@@ -329,7 +336,7 @@ static void run_rssi_loop(void)
     }
 
     /* write output one byte on serial port if it is not busy */
-    if (!MY_IS_UART0_BUSY && producer_offset != consumer_offset)
+    if (!MY_IS_UART_BUSY && producer_offset != consumer_offset)
       send_one_byte_buffer_to_serial();
 
     /* if output buffer is almost full, write at least a block of bytes  */
@@ -410,7 +417,7 @@ void run_current_mode_loop()
 */
 static void run_main_loop(void)
 {
-  my_uart0_init();
+  my_uart_init();
 
   for (;;) {
     run_current_mode_loop();
@@ -438,7 +445,7 @@ static void run_main_loop(void)
 	  }  else if (command_buffer[0] == 'H') {
 	    mode = 'H';
 	    update_output_buffer(0, &mode, 1);
-	    my_uart0_switch_to_2Mbps();
+	    my_uart_switch_to_2Mbps();
 	    cmd_ok = 1;
 	  }  else if (command_buffer[0] == 'D') {
 	    mode = 'D';
@@ -471,35 +478,43 @@ static void run_main_loop(void)
 
 /*---------------------------------------------------------------------------*/
 
-void test_uart()
-{ 
-  my_uart0_init();
-  for (;;) {
-    my_uart0_write('A');
-    my_uart0_write('B');
-  } 
-}
-
-/*---------------------------------------------------------------------------*/
-
 PROCESS(init_process, "init");
 PROCESS_THREAD(init_process, ev, data)
 {
   PROCESS_BEGIN();
 
-  /* switch mac layer off, and turn radio on */
+  watchdog_stop();
+
+  /* (could switch mac layer off, and turn radio off) */
   //rime_mac->off(0);
   //cc2420_off();
 
   /* initialisation */
-  //my_timerb_init(1); /* 8Mhz resolution clock */
-  my_timerb_init(0); /* 32 Khz resolution clock */
+  my_timerb_init(USE_8MHZ_RESOLUTION); /* 32 kHz resol. clock (KiHz) or 8 MHz*/
   my_sfd_init();
+
   
   /* set radio receiver on */
+#ifndef CONTIKI_TARGET_SKY
   cc2420_on();
   cc2420_set_channel(DEFAULT_CHANNEL);
   cc2420_set_no_addr_filter();
+#else
+#warning "*** XXX - NOT CONFIGURING RADIO"
+#endif
+
+
+#if 0
+  my_uart_init();
+  char data = '?';
+  for (;;) {
+    my_uart_write('*');
+    while (!my_uart_has_data()) ;
+    data = my_uart_read();
+    my_uart_write(data+1);
+  } 
+#endif
+
 
   /* main loop */
   MY_LED_OFF(MY_R | MY_G | MY_B);
