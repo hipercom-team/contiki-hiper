@@ -10,25 +10,46 @@
    (for gcc, "static inline" should be as fast as a macro)
 */
 
-/* See http://www2.ece.ohio-state.edu/~bibyk/ee582/telosMote.pdf
- */
+/* See: ./cpu/msp430/f1xxx/uart1.c 
+   and http://www.ti.com/lit/ug/slau049f/slau049f.pdf */
 
 /*---------------------------------------------------------------------------*/
 
-#define MY_LEDS_DIR      P5DIR
-#define MY_LEDS_SEL      P5SEL
-#define MY_LEDS_OUT      P5OUT
+/* WARNING: this is actually UART1 */
 
-#define MY_LED_ON(x)     (MY_LEDS_OUT &= ~(x))
-#define MY_LED_OFF(x)    (MY_LEDS_OUT |= (x))
-#define MY_LED_TOGGLE(x) (MY_LEDS_OUT ^= (x))
-
-#define MY_R        0x10
-#define MY_G        0x20
-#define MY_B        0x40
-
-/*---------------------------------------------------------------------------*/
-
-void my_timerb_init(uint8_t use8Mhz)
+void my_uart0_init(void)
 {
+  ME2 &= ~USPIE1;              /* disable USART1 SPI mode */
+  ME2 &= ~UTXIE1;              /* Disable TX interrupt */
+  ME2 &= ~URXIE1;              /* Disable RX interrupt */
+  ME2 |= UTXE1 + URXE1;        /* Enable Tx/Rx - XXX not in low-level-z1.c */
+  IFG2 &= ~URXIFG1 ;           /* Clear pending interrupts */
+  IFG2 &= ~UTXIFG1;
 }
+
+void my_uart0_init_2Mbps()
+{
+  U1BR0 = 0x5; /* 8M/1600000 = 5 -> 1.6 Mbps but ok for 2 Mbps on receiver! */
+  my_uart0_init();
+}
+
+void my_uart0_switch_to_2Mbps()
+{
+  U1BR0 = 0x5; /* 8M/1600000 = 5 -> 1.6 Mbps but ok for 2 Mbps on receiver */
+}
+
+#define MY_IS_UART0_BUSY ((IFG2 & UTXIFG1) == 0)
+
+static inline void my_uart0_write(uint8_t data)
+{
+  while(MY_IS_UART0_BUSY);
+  TXBUF1 = data;
+}
+
+static inline uint8_t my_uart0_read(void)
+{ return U1RXBUF; }
+
+static inline uint8_t my_uart0_has_data(void)
+{ return IFG2 & URXIFG1; }
+
+/*---------------------------------------------------------------------------*/

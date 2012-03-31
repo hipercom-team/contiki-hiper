@@ -5,6 +5,8 @@
 #            All rights reserved. Distributed only with permission.
 #---------------------------------------------------------------------------
 
+-include Makefile.target
+
 ifndef TARGET
 TARGET=z1
 endif
@@ -41,12 +43,12 @@ rssi-dac: ; ${MOTECTL} rssi-dac
 
 rssi-ch25: ; ${MOTECTL} --channel 25 rssi
 
-flash: sniffer.z1
+flash: sniffer.${TARGET}
 	cd .. && python MoteManager.py --mote-id ${MOTEID} \
-            --avoid-useless-reflash --firmware sniffer/sniffer.z1 flash
+            --avoid-useless-reflash --firmware sniffer/sniffer.${TARGET} flash
 
-flash-rssi: rssi-sniffer.z1
+flash-rssi: rssi-sniffer.${TARGET}
 	cd .. && python MoteManager.py --mote-id ${MOTEID} \
-            --avoid-useless-reflash --firmware sniffer/rssi-sniffer.z1 flash
+         --avoid-useless-reflash --firmware sniffer/rssi-sniffer.${TARGET} flash
 
 #---------------------------------------------------------------------------

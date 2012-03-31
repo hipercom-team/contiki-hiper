@@ -280,6 +280,8 @@ parser.add_option("--no-reset", dest="shouldNotReset",
                   action="store_true",default=False)
 parser.add_option("--mote-id", dest="moteId", type="int",
                   default=DefaultMoteId)
+parser.add_option("--mote-type", dest="moteType", type="string",
+                  default=None)
 parser.add_option("--tty", dest="ttyName", action="store", default=None)
 #parser.add_option("--bps", dest="speed", type="int",
 #                  default=115200)
@@ -298,11 +300,11 @@ moteId = option.moteId
 manager = MoteManager.MoteManager(contikiDir = "../..")
 
 if option.ttyName != None:
-    mote = manager.getMoteByTty(option.ttyName)
+    mote = manager.getMoteByTty(option.ttyName, option.moteType)
 elif sys.platform == "darwin":
     ttyName = "/dev/tty.SLAB_USBtoUART"
     print "(MacOS detected, uing default tty '%s')" % ttyName
-    mote = manager.getMoteByTty(ttyName)
+    mote = manager.getMoteByTty(ttyName, option.moteType)
 else:
     mote = manager.getMoteById(moteId)
 
