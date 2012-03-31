@@ -5,6 +5,8 @@
 #            All rights reserved. Distributed only with permission.
 #---------------------------------------------------------------------------
 
+-include Makefile.target
+
 ifndef TARGET
 TARGET=z1
 endif
