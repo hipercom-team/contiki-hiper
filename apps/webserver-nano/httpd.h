@@ -76,6 +76,8 @@
 #define WEBSERVER_CONF_CONNS     2
 #define WEBSERVER_CONF_NAMESIZE 16
 #define WEBSERVER_CONF_BUFSIZE  40
+/* Short tcp timeouts allow new connections sooner */
+#define WEBSERVER_CONF_TIMEOUT  20
 /* Allow include in .shtml pages, e.g. %!: /header.html */
 #define WEBSERVER_CONF_INCLUDE   1
 /* Allow cgi in .shtml pages, e.g. %! file-stats . */
@@ -93,8 +95,11 @@
 #define WEBSERVER_CONF_PROCESSES 0
 #define WEBSERVER_CONF_ADDRESSES 1
 #define WEBSERVER_CONF_NEIGHBORS 1
-#define WEBSERVER_CONF_ROUTES    1
+#define WEBSERVER_CONF_NEIGHBOR_STATUS 0
+#define WEBSERVER_CONF_ROUTES    0
+#define WEBSERVER_CONF_ROUTE_LINKS  0
 #define WEBSERVER_CONF_SENSORS   0
+#define WEBSERVER_CONF_STATISTICS   0
 #define WEBSERVER_CONF_TICTACTOE 0   //Needs passquery of at least 10 chars 
 #define WEBSERVER_CONF_AJAX      0
 //#define WEBSERVER_CONF_PASSQUERY 10
@@ -113,12 +118,13 @@ extern char httpd_query[WEBSERVER_CONF_PASSQUERY];
 #define WEBSERVER_CONF_LOG       0
 /* Include referrer in log */
 #define WEBSERVER_CONF_REFERER   0
-
+/*-----------------------------------------------------------------------------*/
 #elif WEBSERVER_CONF_NANO==2
 /* webserver-mini having more content */
 #define WEBSERVER_CONF_CONNS     2
 #define WEBSERVER_CONF_NAMESIZE 20
 #define WEBSERVER_CONF_BUFSIZE  40
+#define WEBSERVER_CONF_TIMEOUT  20
 /* Allow include in .shtml pages, e.g. %!: /header.html */
 #define WEBSERVER_CONF_INCLUDE   1
 /* Allow cgi in .shtml pages, e.g. %! file-stats . */
@@ -136,33 +142,38 @@ extern char httpd_query[WEBSERVER_CONF_PASSQUERY];
 #define WEBSERVER_CONF_PROCESSES 1
 #define WEBSERVER_CONF_ADDRESSES 1
 #define WEBSERVER_CONF_NEIGHBORS 1
+#define WEBSERVER_CONF_NEIGHBOR_STATUS 1
 #define WEBSERVER_CONF_ROUTES    1
+#define WEBSERVER_CONF_ROUTE_LINKS  1
 #define WEBSERVER_CONF_SENSORS   1
+#define WEBSERVER_CONF_STATISTICS   1
 //#define WEBSERVER_CONF_TICTACTOE 1   //Needs passquery of at least 10 chars 
 #define WEBSERVER_CONF_AJAX      1
-//#define WEBSERVER_CONF_PASSQUERY 10
+#define WEBSERVER_CONF_SHOW_ROOM 0
+#define WEBSERVER_CONF_PASSQUERY 10
 #if WEBSERVER_CONF_PASSQUERY
 extern char httpd_query[WEBSERVER_CONF_PASSQUERY];
 #endif
 /* Enable specific file types */
-#define WEBSERVER_CONF_JPG       1
-#define WEBSERVER_CONF_PNG       1
-#define WEBSERVER_CONF_GIF       1
+#define WEBSERVER_CONF_JPG       0
+#define WEBSERVER_CONF_PNG       0
+#define WEBSERVER_CONF_GIF       0
 #define WEBSERVER_CONF_TXT       1
-#define WEBSERVER_CONF_CSS       1
-#define WEBSERVER_CONF_BIN       1
+#define WEBSERVER_CONF_CSS       0
+#define WEBSERVER_CONF_BIN       0
 
 /* Log page accesses */
-#define WEBSERVER_CONF_LOG       1
+#define WEBSERVER_CONF_LOG       0
 /* Include referrer in log */
 #define WEBSERVER_CONF_REFERER   1
 
-
+/*-----------------------------------------------------------------------------*/
 #elif WEBSERVER_CONF_NANO==3
 /* webserver-mini having all content */
 #define WEBSERVER_CONF_CONNS     6
 #define WEBSERVER_CONF_NAMESIZE 20
 #define WEBSERVER_CONF_BUFSIZE  40
+#define WEBSERVER_CONF_TIMEOUT  20
 /* Allow include in .shtml pages, e.g. %!: /header.html */
 #define WEBSERVER_CONF_INCLUDE   1
 /* Allow cgi in .shtml pages, e.g. %! file-stats . */
@@ -181,7 +192,12 @@ extern char httpd_query[WEBSERVER_CONF_PASSQUERY];
 #define WEBSERVER_CONF_ADDRESSES 1
 #define WEBSERVER_CONF_NEIGHBORS 1
 #define WEBSERVER_CONF_ROUTES    1
+#define WEBSERVER_CONF_NEIGHBORS 1
+#define WEBSERVER_CONF_NEIGHBOR_STATUS 1
+#define WEBSERVER_CONF_ROUTES    1
+#define WEBSERVER_CONF_ROUTE_LINKS  1
 #define WEBSERVER_CONF_SENSORS   1
+#define WEBSERVER_CONF_STATISTICS   1
 #define WEBSERVER_CONF_TICTACTOE 1   //Needs passquery of at least 10 chars 
 #define WEBSERVER_CONF_AJAX      1
 #define WEBSERVER_CONF_PASSQUERY 10
@@ -271,6 +287,12 @@ struct httpd_state {
 #endif
 #if WEBSERVER_CONF_LOADTIME
   clock_time_t pagetime;
+#endif
+#if WEBSERVER_CONF_AJAX
+  uint16_t ajax_timeout;
+#endif
+#if WEBSERVER_CONF_NEIGHBORS || WEBSERVER_CONF_ROUTES
+  uint8_t starti,savei,startj,savej;
 #endif
 #if WEBSERVER_CONF_CGI
   union {

@@ -41,8 +41,8 @@ PROCESS_THREAD(clock_test_process, ev, data)
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
     etimer_reset(&et);
 
-	count = clock_time();
-	printf("%u ticks\n", count);
+    count = clock_time();
+    printf("%u ticks\n", count);
 
     leds_toggle(LEDS_RED);
     i++;
@@ -55,8 +55,8 @@ PROCESS_THREAD(clock_test_process, ev, data)
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
     etimer_reset(&et);
 
-	sec = clock_seconds();
-	printf("%u seconds\n", (uint16_t) sec);
+    sec = clock_seconds();
+    printf("%u seconds\n", (uint16_t) sec);
 
     leds_toggle(LEDS_GREEN);
     i++;
