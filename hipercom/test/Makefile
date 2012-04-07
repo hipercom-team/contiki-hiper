@@ -54,3 +54,8 @@ myclean:
 	rm -f *.sky
 
 #---------------------------------------------------------------------------
+
+test-contiki-clock.S: test-contiki-clock.c
+	msp430-gcc -DPROJECT_CONF_H=\"project-conf.h\" -DCONTIKI=1 -DCONTIKI_TARGET_SKY=1 -Os -fno-strict-aliasing -ffunction-sections -Wall -mmcu=msp430x1611 -g   -I. -I../..//platform/sky/. -I../..//platform/sky/dev -I../..//platform/sky/apps -I../..//platform/sky/net -I../..//cpu/msp430/f1xxx -I../..//cpu/msp430/. -I../..//cpu/msp430/dev -I../..//core/dev -I../..//core/lib -I../..//core/net -I../..//core/net/mac -I../..//core/net/rime -I../..//core/net/rpl -I../..//core/sys -I../..//core/cfs -I../..//core/ctk -I../..//core/lib/ctk -I../..//core/loader -I../..//core/. -I../..//platform/sky/ -DCONTIKI_VERSION_STRING=\"Contiki-2.5-release-305-g153864b\" -DAUTOSTART_ENABLE -c test-contiki-clock.c -S -o test-contiki-clock.S
+
+#---------------------------------------------------------------------------

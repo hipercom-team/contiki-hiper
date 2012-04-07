@@ -187,10 +187,11 @@ class MoteSniffer:
                 sys.stdout.flush()
 
     def sendAsOpera(self, data):
-        Coef = 32000000
+        Coef = 32000000 #/ (8000000/32768)
         lost, rssi, linkQal, counter, t = struct.unpack("<BBBII", data[1:12])
         #timestamp = long((time.time() - startSnifferTime) * Coef)
-        timestamp = t*4 
+        #timestamp = t*4 
+        timestamp = t * (Coef / 32768)
         packet = data[12:]
         msg = struct.pack("<BIQB", 0, counter, timestamp, len(packet)) +packet
         self.sd.sendto(msg, ("", OperaSnifferPort))
