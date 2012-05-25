@@ -64,7 +64,6 @@ import se.sics.mspsim.cli.LineListener;
 import se.sics.mspsim.cli.LineOutputStream;
 import se.sics.mspsim.core.EmulationException;
 import se.sics.mspsim.core.MSP430;
-import se.sics.mspsim.core.MSP430Constants;
 import se.sics.mspsim.platform.GenericNode;
 import se.sics.mspsim.ui.JFrameWindowManager;
 import se.sics.mspsim.util.ComponentRegistry;
@@ -101,13 +100,6 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
   private int heapStartAddress;
   private StackOverflowObservable stackOverflowObservable = new StackOverflowObservable();
 
-  public MspMote() {
-    myMoteType = null;
-    myCpu = null;
-    myMemory = null;
-    myMoteInterfaceHandler = null;
-  }
-
   public MspMote(MspMoteType moteType, Simulation simulation) {
     this.simulation = simulation;
     myMoteType = moteType;
@@ -138,6 +130,7 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
    */
   public void stopNextInstruction() {
     stopNextInstruction = true;
+    getCPU().stop();
   }
 
   protected MoteInterfaceHandler createMoteInterfaceHandler() {
@@ -220,7 +213,7 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
     this.myCpu.setMonitorExec(true);
     this.myCpu.setTrace(0); /* TODO Enable */
 
-    int[] memory = myCpu.getMemory();
+    int[] memory = myCpu.memory;
     logger.info("Loading firmware from: " + fileELF.getAbsolutePath());
     GUI.setProgressMessage("Loading " + fileELF.getName());
     node.loadFirmware(((MspMoteType)getType()).getELF(), memory);
@@ -481,7 +474,7 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
           String name = mapEntry.getName();
           return file + ":?:" + name;
         }
-        return String.format("*%02x", myCpu.reg[MSP430Constants.PC]);
+        return String.format("*%02x", pc);
       } catch (Exception e) {
         return null;
       }
@@ -573,9 +566,9 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
     return false;
   }
 
-  public Integer getExecutableAddressOf(File file, int lineNr) {
+  public int getExecutableAddressOf(File file, int lineNr) {
     if (file == null || lineNr < 0 || debuggingInfo == null) {
-      return null;
+      return -1;
     }
 
     /* Match file */
@@ -589,7 +582,7 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
       }
     }
     if (lineTable == null) {
-      return null;
+      return -1;
     }
 
     /* Match line number */
@@ -603,10 +596,16 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
       }
     }
 
-    return null;
+    return -1;
   }
 
+  private long lastBreakpointCycles = -1;
   public void signalBreakpointTrigger(MspBreakpoint b) {
+    if (lastBreakpointCycles == myCpu.cycles) {
+      return;
+    }
+
+    lastBreakpointCycles = myCpu.cycles;
     if (b.stopsSimulation() && getSimulation().isRunning()) {
       /* Stop simulation immediately */
       stopNextInstruction();

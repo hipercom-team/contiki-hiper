@@ -898,6 +898,61 @@ public class GUI extends Observable {
     }
     menuPlugins.setMnemonic(KeyEvent.VK_P);
     menuBar.add(menuPlugins);
+    menuPlugins.addMenuListener(new MenuListener() {
+      public void menuSelected(MenuEvent e) {
+        for (Component menuComponent: menuPlugins.getMenuComponents()) {
+          if (!(menuComponent instanceof JMenuItem)) {
+            continue;
+          }
+          JMenuItem menuItem = (JMenuItem) menuComponent;
+          Class<? extends Plugin> pluginClass = (Class<? extends Plugin>) menuItem.getClientProperty("class");
+          int pluginType;
+          if (pluginClass.isAnnotationPresent(PluginType.class)) {
+            pluginType = pluginClass.getAnnotation(PluginType.class).value();
+          } else {
+            pluginType = PluginType.UNDEFINED_PLUGIN;
+          }
+
+          /* No simulation -> deactivate non-GUI plugins */
+          if (pluginType == PluginType.COOJA_PLUGIN || pluginType == PluginType.COOJA_STANDARD_PLUGIN) {
+            menuItem.setEnabled(true);
+            continue;
+          }
+          /* Mote plugin -> not accessed from this menu */
+          if (pluginType == PluginType.MOTE_PLUGIN) {
+            menuItem.setEnabled(false);
+            continue;
+          }
+          if (pluginType != PluginType.SIM_PLUGIN && pluginType != PluginType.SIM_STANDARD_PLUGIN) {
+            /* Unknown */
+            menuItem.setEnabled(false);
+            continue;
+          }
+          if (getSimulation() == null) {
+            menuItem.setEnabled(false);
+            continue;
+          }
+
+          /* Check if simulation plugin depends on any particular radio medium */
+          if (pluginClass.getAnnotation(SupportedArguments.class) != null) {
+            menuItem.setEnabled(false);
+            Class<? extends RadioMedium>[] radioMediums = pluginClass.getAnnotation(SupportedArguments.class).radioMediums();
+            for (Class<? extends Object> o: radioMediums) {
+              if (o.isAssignableFrom(getSimulation().getRadioMedium().getClass())) {
+                menuItem.setEnabled(true);
+                break;
+              }
+            }
+          } else {
+            menuItem.setEnabled(true);
+          }
+        }
+      }
+      public void menuDeselected(MenuEvent e) {
+      }
+      public void menuCanceled(MenuEvent e) {
+      }
+    });
 
     // Settings menu
     menu = new JMenu("Settings");
@@ -1806,7 +1861,7 @@ public class GUI extends Observable {
         public Boolean work() {
           // Create 'start plugin'-menu item
           JMenuItem menuItem;
-          String tooltip = "<html>";
+          String tooltip = "<html><pre>";
 
           /* Sort menu according to plugin type */
           int itemIndex=0;
@@ -1844,7 +1899,7 @@ public class GUI extends Observable {
             menuItem = new JMenuItem(description);
             menuItem.setEnabled(false);
             tooltip += "Mote plugin: " + newPluginClass.getName();
-            tooltip += "<br>Start mote plugins by right-clicking a mote in the simulation visualizer";
+            tooltip += "\nStart mote plugins by right-clicking a mote in the simulation visualizer";
             menuMotePluginClasses.add(newPluginClass);
             itemIndex = menuPlugins.getItemCount();
           } else {
@@ -1856,7 +1911,7 @@ public class GUI extends Observable {
           File project =
             getProjectConfig().getUserProjectDefining(GUI.class, "PLUGINS", newPluginClass.getName());
           if (project != null) {
-            tooltip += "<br>Loaded by project: " + project.getPath();
+            tooltip += "\nLoaded by project: " + project.getPath();
           }
 
           tooltip += "</html>";
@@ -1934,6 +1989,34 @@ public class GUI extends Observable {
       JMenuItem menuItem = new JMenuItem(guiAction);
       menuItem.putClientProperty("class", motePluginClass);
       menuItem.putClientProperty("mote", mote);
+
+      /* Check if mote plugin depends on any particular type of mote */
+      boolean enableMenuItem = true;
+      if (motePluginClass.getAnnotation(SupportedArguments.class) != null) {
+        enableMenuItem = false;
+        Class<? extends Mote>[] motes = motePluginClass.getAnnotation(SupportedArguments.class).motes();
+        StringBuilder sb = new StringBuilder();
+        sb.append(
+            "<html><pre>This plugin:\n" +
+            motePluginClass.getName() +
+            "\ndoes not support motes of type:\n" +
+            mote.getClass().getName() +
+            "\n\nIt only supports motes of types:\n"
+        );
+        for (Class<? extends Object> o: motes) {
+          sb.append(o.getName() + "\n");
+          if (o.isAssignableFrom(mote.getClass())) {
+            enableMenuItem = true;
+            break;
+          }
+        }
+        sb.append("</html>");
+        if (!enableMenuItem) {
+          menuItem.setToolTipText(sb.toString());
+        }
+      }
+
+      menuItem.setEnabled(enableMenuItem);
       menuMotePlugins.add(menuItem);
     }
     return menuMotePlugins;
