@@ -29,6 +29,8 @@ sniff: ; ${MOTECTL} sniffer-wireshark
 
 sniff-fast: ; ${MOTECTL} --high-speed sniffer-wireshark
 
+record: ; ${MOTECTL} --record record.sniffer --high-speed sniffer-wireshark 
+
 dump: ; ${MOTECTL} sniffer-text
 
 opera: ; ${MOTECTL} sniffer-opera

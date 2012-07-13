@@ -19,16 +19,17 @@
 PROCESS(init_process, "init");
 AUTOSTART_PROCESSES(&init_process);
 
-uint32_t clock1, clock2, clock3, clock4, clock5, clock6, clock7, clock8, clock9;
-uint16_t timer1, timer2, timer3, timer4, timer5, timer6, timer7, timer8, timer9;
+uint32_t clock1, clock2, clock3, clock4, clock5, clock6, clock7, clock8, clock9=0,clock10;
+uint16_t timer1, timer2, timer3, timer4, timer5, timer6, timer7, timer8, timer9=0,timer10;
 static struct ctimer callback_timer;
 struct rtimer callback_rtimer;
+struct rtimer callback_rtimer2;
 
 #define PRINTDIFF(pre,idx,idxref)					\
   printf(pre " t=%lu (dt=%lu) TAR=%u[%u] (dT=%u)\n",			\
 	 clock##idx, (clock##idx-clock##idxref),			\
-	 timer##idx, (timer##idx)%(RTIMER_SECOND/CLOCK_SECOND),		\
-	 (timer##idx-timer##idxref) )
+	 timer##idx, (timer##idx & 0xffu),				\
+	 (timer##idx - timer##idxref) )
 
 void display_result()
 {
@@ -36,21 +37,23 @@ void display_result()
   printf("Starting t=%lu TAR=%u\n", clock1, timer1);
   //printf("After waiting etimer_set(...,0) t=%lu TAR=%u\n", clock2, timer2);
   PRINTDIFF("After waiting etimer_set(...,0)", 2, 1);
-  PRINTDIFF("After waiting etimer_set(...,0)", 3, 2);
+  PRINTDIFF("After waiting etimer_set(...,1)", 3, 2);
   PRINTDIFF("After waiting ctimer_set(...,0)", 4, 3);
   PRINTDIFF("After waiting ctimer_set(...,0)", 5, 4);
   PRINTDIFF("After waiting ctimer_set(...,1)", 6, 5);
   PRINTDIFF("After waiting ctimer_set(...,1)", 7, 6);
   PRINTDIFF("After waiting rtimer_set(...,1)", 8, 7);
   PRINTDIFF("After waiting rtimer_set(...,3)", 9, 8);
+  PRINTDIFF("After waiting rtimer_set(...,3)", 10, 8);
 }
 
 void callback_func1(void* callback_arg);
 void callback_func2(void* callback_arg);
 void callback_func3(void* callback_arg);
 void callback_func4(void* callback_arg);
-void callback_func5(void* callback_arg);
-void callback_func6(void* callback_arg);
+void callback_func5(struct rtimer *t, void* callback_arg);
+void callback_func6(struct rtimer *t, void* callback_arg);
+void callback_func7(struct rtimer *t, void* callback_arg);
 
 void callback_func1(void* callback_arg)
 {
@@ -81,19 +84,29 @@ void callback_func4(void* callback_arg)
 	     callback_func5, NULL);
 }
 
-void callback_func5(void* callback_arg)
+void callback_func5(struct rtimer *t, void* callback_arg)
 {
   clock8 = my_get_clock();
   timer8 = TAR;
-  rtimer_set(&callback_rtimer, RTIMER_NOW()+3, 
-	     0/*unused*/, callback_func6, NULL);
+  int v1 = rtimer_set(&callback_rtimer2, RTIMER_NOW()+10, 
+       0/*unused*/, callback_func7, NULL);
+  int v2 = rtimer_set(&callback_rtimer, RTIMER_NOW()+2,
+  	     0/*unused*/, callback_func6, NULL);
+  printf("%d %d\n", v1,v2);
 }
 
-
-void callback_func6(void* callback_arg)
+void callback_func6(struct rtimer *t, void* callback_arg)
 {
   clock9 = my_get_clock();
   timer9 = TAR;
+  display_result();
+  process_poll(&init_process); /* wake-up init_process */
+}
+
+void callback_func7(struct rtimer *t, void* callback_arg)
+{
+  clock10 = my_get_clock();
+  timer10 = TAR;
   display_result();
   process_poll(&init_process); /* wake-up init_process */
 }
@@ -123,7 +136,7 @@ PROCESS_THREAD(init_process, ev, data)
     clock2 = my_get_clock();
     timer2 = TAR;
     
-    etimer_set(&delay, 0);
+    etimer_set(&delay, 1);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&delay));
     
     clock3 = my_get_clock();

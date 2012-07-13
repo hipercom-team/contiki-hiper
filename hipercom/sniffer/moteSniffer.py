@@ -274,6 +274,44 @@ class MoteSniffer:
 
 #---------------------------------------------------------------------------
 
+class RecordedPort:
+    def __init__(self, recordedMote):
+        self.recordedMote = recordedMote
+    def inWaiting(self): 
+        return self.recordedMote.mote.port.inWaiting()
+    def read(self,*args): 
+        data = self.recordedMote.mote.port.read(*args)
+        info = (time.time(), "recv", data)
+        self.recordedMote.f.write(repr(info)+"\n")
+        self.recordedMote.f.flush()
+        return data
+    def write(self, data): 
+        info = (time.time(), "send", data)
+        self.recordedMote.f.write(repr(info)+"\n")
+        self.recordedMote.f.flush()
+        return self.recordedMote.mote.port.write(data)
+
+class RecordedMote:
+    def __init__(self, mote, fileName):
+        self.fileName = fileName
+        self.mote = mote
+        self.f = open(fileName, "w")
+        print "* recording in file '%s'" % fileName
+        self.port = RecordedPort(self)
+
+    def reset(self): return self.mote.reset()
+
+    def openPort(self, speed=115200): return self.mote.openPort()
+
+    def flush(self): return self.mote.flush()
+
+    def write(self,*args): return self.mote.write(*args)
+
+    def reOpenPort(self,*args): return self.mote.reOpenPort(*args)
+
+
+#---------------------------------------------------------------------------
+
 random.seed(time.time())
 
 DefaultMoteId = 10
@@ -296,6 +334,8 @@ parser.add_option("--log", dest="logFileName", action="store", type="string",
                   default=None)
 parser.add_option("--short", dest="shortInfo", action="store_true", 
                   default=False)
+parser.add_option("--record", dest="recordFileName", action="store", 
+                  type="string", default=None)
 
 option,argList = parser.parse_args()
 
@@ -310,6 +350,9 @@ elif sys.platform == "darwin":
     mote = manager.getMoteByTty(ttyName, option.moteType)
 else:
     mote = manager.getMoteById(moteId)
+
+if option.recordFileName != None:
+    mote = RecordedMote(mote, option.recordFileName)
 
 #--------------------------------------------------
 
