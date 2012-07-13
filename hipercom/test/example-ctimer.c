@@ -24,19 +24,25 @@ uint16_t timer1, timer2, timer3, timer4, timer5, timer6, timer7, timer8, timer9;
 static struct ctimer callback_timer;
 struct rtimer callback_rtimer;
 
+#define PRINTDIFF(pre,idx,idxref)					\
+  printf(pre " t=%lu (dt=%lu) TAR=%u[%u] (dT=%u)\n",			\
+	 clock##idx, (clock##idx-clock##idxref),			\
+	 timer##idx, (timer##idx)%(RTIMER_SECOND/CLOCK_SECOND),		\
+	 (timer##idx-timer##idxref) )
+
 void display_result()
 {
   printf("----------------------\n");
   printf("Starting t=%lu TAR=%u\n", clock1, timer1);
-  printf("After waiting etimer_set(...,0) t=%lu TAR=%u\n", clock2, timer2);
-  printf("After waiting etimer_set(...,0) t=%lu TAR=%u\n", clock3, timer3);
-  printf("After waiting ctimer_set(...,0) t=%lu TAR=%u\n", clock4, timer4);
-  printf("After waiting ctimer_set(...,0) t=%lu TAR=%u\n", clock5, timer5);
-  printf("After waiting ctimer_set(...,1) t=%lu TAR=%u\n", clock6, timer6);
-  printf("After waiting ctimer_set(...,1) t=%lu TAR=%u\n", clock7, timer7);
-  printf("After waiting rtimer_set(...,1) t=%lu TAR=%u\n", clock8, timer8);
-  printf("After waiting rtimer_set(...,3) t=%lu TAR=%u\n", clock9, timer9);
-
+  //printf("After waiting etimer_set(...,0) t=%lu TAR=%u\n", clock2, timer2);
+  PRINTDIFF("After waiting etimer_set(...,0)", 2, 1);
+  PRINTDIFF("After waiting etimer_set(...,0)", 3, 2);
+  PRINTDIFF("After waiting ctimer_set(...,0)", 4, 3);
+  PRINTDIFF("After waiting ctimer_set(...,0)", 5, 4);
+  PRINTDIFF("After waiting ctimer_set(...,1)", 6, 5);
+  PRINTDIFF("After waiting ctimer_set(...,1)", 7, 6);
+  PRINTDIFF("After waiting rtimer_set(...,1)", 8, 7);
+  PRINTDIFF("After waiting rtimer_set(...,3)", 9, 8);
 }
 
 void callback_func1(void* callback_arg);
@@ -89,6 +95,7 @@ void callback_func6(void* callback_arg)
   clock9 = my_get_clock();
   timer9 = TAR;
   display_result();
+  process_poll(&init_process); /* wake-up init_process */
 }
 
 
@@ -96,29 +103,36 @@ PROCESS_THREAD(init_process, ev, data)
 {
   PROCESS_BEGIN();
 
+  watchdog_stop();
+
   my_timerb_init(1); /* set up timerb with 8Mhz source and int. counter */
 
-  clock1 = my_get_clock();
-  timer1 = TAR;
 
   static struct etimer delay;
   static int i;
 
-  //for (i=0;i<10;i++) {
-  etimer_set(&delay, 0);
-  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&delay));
-  
-  clock2 = my_get_clock();
-  timer2 = TAR;
-  
-  etimer_set(&delay, 0);
-  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&delay));
-  
-  clock3 = my_get_clock();
-  timer3 = TAR;
-  
-  ctimer_set(&callback_timer, 0, callback_func1, NULL);
-  //}
+  for (i=0;i<10;i++) {
+    while( (TAR&0xff)/10 != i) ;
+
+    clock1 = my_get_clock();
+    timer1 = TAR;
+    
+    etimer_set(&delay, 0);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&delay));
+    
+    clock2 = my_get_clock();
+    timer2 = TAR;
+    
+    etimer_set(&delay, 0);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&delay));
+    
+    clock3 = my_get_clock();
+    timer3 = TAR;
+    
+    ctimer_set(&callback_timer, 0, callback_func1, NULL);
+
+    PROCESS_WAIT_EVENT(); /* sleep until waken-up */
+  }
 
   PROCESS_END();
 }
