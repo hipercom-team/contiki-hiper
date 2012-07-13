@@ -96,6 +96,12 @@ class MoteManager:
 
 #..................................................
 
+class SimTcpPort:
+    def __init__(self, port):
+        self. port = port
+        self.sd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sd.connect(("localhost", port))
+
 class Mote:
     def __init__(self, ttyName, moteId = None, manager = None, moteType = None):
         self.ttyName = ttyName
@@ -116,7 +122,9 @@ class Mote:
 
     def reset(self):
         self.ensureNoPort()
-        self.manager.resetMoteByTty(self.ttyName, self.moteType)
+        if not self.ttyName.startswith("tcp:"):
+            self.manager.resetMoteByTty(self.ttyName, self.moteType)
+        else: warnings.warn("cannot reset COOJA mote")
 
     def flashFirmware(self, z1Firmware):
         # See rules for "z1-u.%" "z1-upload" in
@@ -153,7 +161,11 @@ class Mote:
         os.remove(firmware)
 
     def openPort(self, speed=115200):
-        self.port = serial.Serial(port = self.ttyName, baudrate = speed)
+        if not self.ttyName.startswith("tcp:"):
+            self.port = serial.Serial(port = self.ttyName, baudrate = speed)
+        else:
+            tcpPort = self.ttyName.replace("tcp:","")
+            self.port = SimTcpPort(tcpPort)
 
     def reOpenPort(self, newSpeed=115200):
         if self.port != None: 
