@@ -413,12 +413,13 @@ send_packet(void)
   rtimer_clock_t t;
   rtimer_clock_t encounter_time = 0;
   int strobes;
-  struct cxmac_hdr hdr;
+  struct cxmac_hdr *hdr;
   int got_strobe_ack = 0;
   uint8_t strobe[MAX_STROBE_SIZE];
   int strobe_len, len;
   int is_broadcast = 0;
-/*int is_reliable;*/
+  int is_dispatch, is_strobe_ack;
+  /*int is_reliable;*/
   struct encounter *e;
   struct queuebuf *packet;
   int is_already_streaming = 0;
@@ -563,8 +564,10 @@ send_packet(void)
 	if(len > 0) {
 	  packetbuf_set_datalen(len);
 	  if(NETSTACK_FRAMER.parse() >= 0) {
-	    memcpy(&hdr, packetbuf_dataptr(), sizeof(hdr));
-	    if(hdr.dispatch == DISPATCH && hdr.type == TYPE_STROBE_ACK) {
+	    hdr = packetbuf_dataptr();
+	    is_dispatch = hdr->dispatch == DISPATCH;
+	    is_strobe_ack = hdr->type == TYPE_STROBE_ACK;
+	    if(is_dispatch && is_strobe_ack) {
 	      if(rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
 			      &rimeaddr_node_addr)) {
 		/* We got an ACK from the receiver, so we can immediately send
@@ -574,7 +577,7 @@ send_packet(void)
 	      } else {
 		PRINTDEBUG("cxmac: strobe ack for someone else\n");
 	      }
-	    } else /*if(hdr.dispatch == DISPATCH && hdr.type == TYPE_STROBE)*/ {
+	    } else /*if(hdr->dispatch == DISPATCH && hdr->type == TYPE_STROBE)*/ {
 	      PRINTDEBUG("cxmac: strobe from someone else\n");
 	      collisions++;
 	    }
