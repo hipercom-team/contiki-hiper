@@ -22,8 +22,8 @@
 
 import struct, os, tempfile
 
-import scipy, numpy
-import scipy.signal.signaltools
+#import scipy, numpy
+#import scipy.signal.signaltools
 
 def runGnuplot(commandText):
     tmpFileName = tempfile.mktemp()
@@ -34,41 +34,74 @@ def runGnuplot(commandText):
 
 MaxTarDiff = 2000
 
-def parseLog(fileName, timeOffset = 0):
+def parseLog(fileName, timeOffset = 0, skipCount=0):
     rxList = []
     txList = []
+    rxTable = {}
+    txTable = {}
     f = open(fileName)
     g = open(fileName+".dat", "w")
     baseClock = None
     tarDiff = None
     lastTar = None
 
+    clockHigh = 0
+    lastPacketId = None
+    offsetPacketId = 0
+
     while True:
         line = f.readline()
         if line == "": break
+        if skipCount >0:
+            skipCount -= 1
+            continue
         clock, packet = eval(line.strip())
-
 
         if baseClock == None: 
             baseClock = clock
             
-        if packet[0:2] in ["2I", "2o"]:
+        if 0 and (packet[0:2] in ["2I", "2o"] or packet[0] in ['S','D']):
             tar = struct.unpack("<H", packet[2:4])[0]
 
-            relClock = long( (clock+timeOffset-baseClock)* (1L<<15L))
+            relClock = long( (clock+timeOffset-baseClock)* (1L<<15L)) # 'tar'PC
             if tarDiff == None:
                 tarDiff = (relClock-tar) % (1L<<16)
-            #print tarDiff, (relClock-tar-tarDiff) % (1L<<16)
-            deltaTar = (relClock-tarDiff - tar) % (1L<<16)
+            ##print "TARDIFF", tarDiff, (relClock-tar-tarDiff) % (1L<<16)
+
+            deltaTar = (relClock-tarDiff-tar) % (1L<<16)
             assert (deltaTar < MaxTarDiff or deltaTar > (1<<16)-MaxTarDiff)
-            #print deltaTar
-            
-            fullTar = (((relClock-tarDiff) >> 16) << 16) | tar
-            #print deltaTar
-            #if deltaTar > (1<<15): fullTar += (1<<16)
+            ##print deltaTar
+
+            fullTar = (((relClock - tarDiff) >> 16) << 16) | tar
+            ##if deltaTar < (1<<15): fullTar += (1<<16)
+            #print relClock, (relClock >>16)<<16, (((relClock-tarDiff) >> 16) << 16), tar, fullTar, deltaTar
+            ##print deltaTar
+            ##print fullTar, lastTar
             if lastTar != None:
                 assert fullTar >= lastTar
             lastTar = fullTar
+
+        if packet[0:2] in ["2I", "2o"] or packet[0] in ['S','D']:
+            tar = struct.unpack("<H", packet[2:4])[0]
+            if lastTar != None and tar < lastTar:
+                clockHigh += (1<<16)
+            fullTar = clockHigh + tar
+            lastTar = tar
+            
+        if packet[0] == 'S' or packet[0] == 'D':
+            packetId = struct.unpack("!B", packet[1])[0]
+            if lastPacketId == None:
+                lastPacketId = packetId
+            #elif packetId < lastPacketId-(1<<7): # wrap-around
+            #    offsetPacketId += (1<<8)
+            lastPacketId = packetId
+            fullPacketId = offsetPacketId + packetId
+            #print fullPacketId, packetId
+            if packet[0] == "S":
+                txTable[fullPacketId] = fullTar
+            elif packet[0] == "D":
+                rxTable[fullPacketId] = fullTar
+            else: raise ValueError("code", packet[0])
 
         if packet.startswith("2I"):
             rxList.append(fullTar)
@@ -80,75 +113,30 @@ def parseLog(fileName, timeOffset = 0):
             g.write("%s 2\n" % (fullTar/float(1<<15)))
     g.close()
 
-    return rxList, txList
+    return rxList, txList, rxTable, txTable
 
 
 offset = 2
 
-rxRoot, txRoot = parseLog("log_root.txt")
+rxRoot, txRoot, rxPerId1,txPerId1 \
+    = parseLog("log_root.txt", skipCount=0*40)
 print "-"*50
-rxNode2, txNode2 = parseLog("log_2.txt", offset)
+rxNode2, txNode2, rxPerId2,txPerId2 \
+    = parseLog("log_2.txt", offset, skipCount=0*15)
 
-# 
-if 0:
-    s1 = txRoot[len(txRoot)/2]
-    s2 = rxNode2[len(rxNode2)/2]
-    
-    d = (1<<15) * 2
-    
-    data1 = [x-s1+d for x in txRoot if s1-d < x < s1+d ]
-    data2 = [x-s2+d for x in rxNode2 if s2-d < x < s2+d ]
+#---------------------------------------------------------------------------
 
+commonIdSet = set(txPerId1.keys()).intersection(rxPerId2.keys())
+tarDiffList = sorted([ txPerId1[packetId] - rxPerId2[packetId]
+                       for packetId in commonIdSet ])
+timeOffset = tarDiffList[len(tarDiffList)/2]
 
-# http://stackoverflow.com/questions/6157791/find-phase-difference-between-two-inharmonic-waves
-
-if 0:
-    ts = max(max(data1), max(data2))+1
-    ts = 1019
-    rootArray = scipy.zeros(ts)  #array([(t in txRoot) for t in range(ts)])
-    node2Array = scipy.zeros(ts) #array([(t in rxNode2) for t in range(ts)])
-
-    #fil = [1, 3, 5, 3, 1]
-    fil,k = [1, 3, 5, 9, 5, 3, 1],3
-    for t in txRoot:
-        for j in range(len(fil)):
-            rootArray[(t+j-k) % ts] += fil[j]
-    for t in rxNode2:
-        for j in range(len(fil)):
-            node2Array[(t+j-k) % ts] += fil[j]
-
-
-data1 = txRoot[:]
-data2 = rxNode2[:]
-bin = 128
-
-ts = max(max(data1),max(data2))//bin+1
-print ts
-
-vector1 = scipy.zeros(ts)  #array([(t in txRoot) for t in range(ts)])
-vector2 = scipy.zeros(ts) #array([(t in rxNode2) for t in range(ts)])
-
-for x in data1:
-    vector1[x//bin] += 1
-for x in data2:
-    vector2[x//bin] += 1
-
-#xcorr = list(scipy.signal.fftconvolve(vector1, vector2))
-xcorr = scipy.signal.signaltools.correlate(vector1, vector2)
-
-dt = numpy.arange(1-ts, ts)
-time_shift = dt[xcorr.argmax()]
-print time_shift
-
-f = open("correlation.dat", "w")
-for i in range(len(xcorr)):
-    f.write("%d %d\n" % (i, xcorr[i]))
-f.close()
+#---------------------------------------------------------------------------
 
 runGnuplot("""
 
 #plot 'correlation.dat' 
-plot [40:] [0:2.5] 'log_root.txt.dat', 'log_2.txt.dat' using ($1-%s):(3.1-$2)
+plot [:] [0:2.5] 'log_root.txt.dat', 'log_2.txt.dat' using ($1-%s):(3.1-$2)
 
 pause -1
-""" % ((-time_shift*bin)/float(1<<15) ))
+""" % (-timeOffset/32768.0))
