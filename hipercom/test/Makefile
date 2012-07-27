@@ -26,9 +26,9 @@ include ${CONTIKI}/Makefile.include
 #--------------------------------------------------
 
 # can be overriden from command line
-MOTEID=10
+MOTEID=31
 # can also be overriden
-FIRMWARE=example-ctimer
+FIRMWARE=clock-gen
 
 dump:
 	cd .. && python MoteManager.py --mote-id ${MOTEID} reset dump

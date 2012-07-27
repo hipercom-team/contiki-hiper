@@ -6,6 +6,7 @@
 #---------------------------------------------------------------------------
 
 import sys, time, select, optparse, random, struct, hashlib
+import datetime
 import socket
 
 
@@ -293,6 +294,9 @@ class RecordedPort:
 
 class RecordedMote:
     def __init__(self, mote, fileName):
+        s = datetime.datetime.fromtimestamp(time.time()).isoformat(sep="-")
+        s = s.split(".")[0].replace(":","_")
+        fileName = fileName.replace("DATE", s)
         self.fileName = fileName
         self.mote = mote
         self.f = open(fileName, "w")
@@ -394,6 +398,8 @@ if option.channel != None:
     mote.channel = channel
 
 #--------------------------------------------------
+
+print 
 
 if len(argList) == 0:
     print "# no command, exiting"

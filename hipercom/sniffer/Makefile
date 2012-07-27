@@ -21,7 +21,7 @@ include ${CONTIKI}/Makefile.include
 
 #--------------------------------------------------
 
-MOTEID?=6 # can be overriden from command line
+MOTEID?=30 # can be overriden from command line
 
 MOTECTL=python moteSniffer.py --mote-id ${MOTEID}
 
@@ -29,7 +29,7 @@ sniff: ; ${MOTECTL} sniffer-wireshark
 
 sniff-fast: ; ${MOTECTL} --high-speed sniffer-wireshark
 
-record: ; ${MOTECTL} --record record.sniffer --high-speed sniffer-wireshark 
+record: ; ${MOTECTL} --record packet-DATE.log --high-speed sniffer-wireshark 
 
 dump: ; ${MOTECTL} sniffer-text
 
