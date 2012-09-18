@@ -6,6 +6,7 @@
 #---------------------------------------------------------------------------
 
 import sys, optparse, subprocess, os, time, hashlib
+import socket, select
 import serial
 from optparse import OptionParser
 
@@ -72,8 +73,21 @@ class MoteManager:
         return self.getMoteByTty(ttyName, moteId, moteType)
 
     def getMoteByTty(self, ttyName, moteId = None, moteType = None):
+        if ttyName != None and ttyName.startswith("socket:"):
+            socketSpecList = ttyName.split(":")
+            if len(socketSpecList) == 2:
+                port = int(socketSpecList[1])
+                return SimTcpPort(port, moteId, self, moteType)
+            elif len(ttySpecList) == 3:
+                machine = socketSpecList[1]
+                port = int(socketSpecList[2])
+                return SimTcpPort(port, moteId, self, moteType, 
+                                  destination=machine)
+            else: raise ValueError("Bad socket specification", moteType)
+
         if moteType == None: 
             moteType = self.defaultMoteType
+                    
         return Mote(ttyName, moteId, self, moteType)
 
     def resetMoteByTty(self, ttyName, moteType=None):
@@ -97,10 +111,33 @@ class MoteManager:
 #..................................................
 
 class SimTcpPort:
-    def __init__(self, port):
-        self. port = port
+    def __init__(self, port, moteId = None, manager = None, moteType = None,
+                 destination="localhost"):
+        self.moteId = moteId
+        self.manager = manager
+        self.destination = destination 
+        self.tcpPort = port
+        self.port = self # XXX: hack because of call "mote.port.inWaiting()"
+
+    def reset(self):
+        pass
+
+    def openPort(self, speed=None):
         self.sd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sd.connect(("localhost", port))
+        self.sd.connect((self.destination, self.tcpPort))
+
+    def flush(self):
+        pass 
+
+    def write(self, data):
+        self.sd.send(data)
+
+    def read(self, len):
+        return self.sd.recv(len)
+
+    def inWaiting(self):
+        inList, outList, exceptList = select.select([self.sd], [], [], 0)
+        return self.sd in inList 
 
 class Mote:
     def __init__(self, ttyName, moteId = None, manager = None, moteType = None):

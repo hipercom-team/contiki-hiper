@@ -166,8 +166,13 @@ class MoteSniffer:
 
     def processSfd(self, data):
         assert data[0] == 's'
-        #print repr(data), len(data)
+        #print "SFD", repr(data), len(data)
+        if len(data[0]) == 1: 
+            sys.stdout.write("/") 
+            sys.stdout.flush()
+            return
         isUp, padding, clock, serialClock = struct.unpack("<BBII", data[1:])
+
         #print "(",isUp, clock,")"
         info = ("sfd", isUp, clock)
         if self.log != None:
@@ -229,7 +234,6 @@ class MoteSniffer:
             packetHash = hashlib.md5(packet).hexdigest()
             info = ("packet", packetHash, t, rssi, linkQual, counter)
             self.log.write(repr(info)+"\n")
-
 
     #--------------------------------------------------
 
