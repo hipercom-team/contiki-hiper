@@ -21,7 +21,7 @@ include ${CONTIKI}/Makefile.include
 
 #--------------------------------------------------
 
-MOTEID?=30 # can be overriden from command line
+MOTEID?=5 # can be overriden from command line
 
 MOTECTL=python moteSniffer.py --mote-id ${MOTEID}
 

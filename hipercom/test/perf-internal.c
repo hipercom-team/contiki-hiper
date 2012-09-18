@@ -169,9 +169,11 @@ PROCESS_THREAD(stat_thread, ev, data)
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&wait_timer));
     
     unsigned long interval = get_current_time() - first_packet_time;
-    printf("received %ld/s nb=%ld lost=%ld bad_orig=%ld last_seq_num=%ld\n", 
+    printf("Received %ld/s nb=%ld lost=%ld bad_orig=%ld last_seq_num=%ld"
+	   " orig=%ld\n", 
 	   (stat_recv * CLOCK_SECOND)/ interval, 
-	   stat_recv, stat_lost, stat_bad_originator, last_seq_num);
+	   stat_recv, stat_lost, stat_bad_originator, last_seq_num,
+	   last_originator);
 
     last_seq_num = -1;
     stat_lost = 0;
