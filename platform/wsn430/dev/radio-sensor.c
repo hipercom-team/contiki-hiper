@@ -32,7 +32,11 @@
  */
 
 #include "lib/sensors.h"
+#if WITH_CC1100
 #include "dev/cc1100.h"
+#elif WITH_CC2420 /* WITH_CC1100 */
+#include "dev/cc2420.h"
+#endif /* WITH_CC2420 */
 #include "dev/radio-sensor.h"
 
 const struct sensors_sensor radio_sensor;
@@ -44,10 +48,18 @@ value(int type)
 {
   switch(type) {
   case RADIO_SENSOR_LAST_PACKET:
+#if WITH_CC1100
     return cc1100_last_lqi;
+#elif WITH_CC2420 /* WITH_CC1100 */
+    return cc2420_last_correlation;
+#endif /* WITH_CC2420 */
   case RADIO_SENSOR_LAST_VALUE:
   default:
+#if WITH_CC1100
     return cc1100_last_rssi;
+#elif WITH_CC2420 /* WITH_CC1100 */
+    return cc2420_last_rssi;
+#endif /* WITH_CC2420 */
   }
 }
 /*---------------------------------------------------------------------------*/
