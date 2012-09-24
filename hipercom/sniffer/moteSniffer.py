@@ -8,6 +8,7 @@
 import sys, time, select, optparse, random, struct, hashlib
 import datetime, os
 import socket
+import threading, curses, atexit # for bars
 
 sys.path.append("..")
 import MoteManager
@@ -125,12 +126,13 @@ class MoteSniffer:
 
     #--------------------------------------------------
 
-    def runAsPacketSniffer(self, outputFormat = "opera"):
+    def runAsPacketSniffer(self, outputFormat = "opera", packetObserver = None):
         if self.option.logFileName != None:
             self.openLog()
         else: self.log = None
 
         self.outputFormat = outputFormat
+        self.packetObserver = packetObserver
         self.prepareOutputFormat()
         #mote.write(makeCmd("C"+chr(self.channel)))
         mote.write(makeCmd("P"))
@@ -167,10 +169,13 @@ class MoteSniffer:
                 print "* sniffer mote switched to canal", repr(data)
                 continue
             elif data[0] == 'p':
-                sys.stdout.write("+") ; sys.stdout.flush()
+                if self.outputFormat != "observer":
+                    sys.stdout.write("+") ; sys.stdout.flush()
                 if self.outputFormat == "wireshark": self.sendAsZep(data)
                 elif self.outputFormat == "text": self.dumpAsText(data)
                 elif self.outputFormat == "record": self.recordPacket(data)
+                elif self.outputFormat == "observer": 
+                    if self.packetObserver != None: self.notifyObserver(data)
                 else: self.sendAsOpera(data)
             elif data[0] == 's':
                 self.processSfd(data)
@@ -268,6 +273,19 @@ class MoteSniffer:
                        + " " + packetRepr
                        + "\n")
         self.log.flush()
+
+
+    def notifyObserver(self, data):
+        assert self.packetObserver != None
+        info = {"machineClock": time.time()}
+        (info["lost"], info["rssi"], info["linkQual"], info["counter"], 
+         t) = struct.unpack("<BbBII", data[1:12])
+        info["rssi"] += -45 # cf. RSSI_OFFSET - cc2420 doc
+        if info["lost"] & 1 == 0: freq = FreqLow
+        else: freq = FreqHigh
+        info["clock"] = (t/float(freq))
+        info["packet"] = data[12:]
+        self.packetObserver(info)
 
     #--------------------------------------------------
 
@@ -434,6 +452,161 @@ if option.withHighSpeed:
 
 #--------------------------------------------------
 
+NbPacketStat = 20
+
+MovingAvgCoef = 0.9
+MovingAvgCoefList = [MovingAvgCoef ** i for i in range(NbPacketStat)]
+
+print MovingAvgCoefList
+
+class NodeInfo:
+    
+    def __init__(self, nodeId):
+        self.nodeId = nodeId
+        self.lastClock = None
+        self.lastPacketId = None
+        self.status = {}
+
+    def addPacket(self, clock, machineClock, packetId, delay, rssi):
+        #print clock, machineClock, packetId, delay
+        self.updateClock(machineClock, packetId)
+        self.status[packetId] = rssi
+        self.lastPacketId = packetId
+        self.lastClock = machineClock
+        self.lastDelay = delay
+        #print self.status
+
+    def updateClock(self, machineClock, packetId = None):
+        if self.lastClock == None:
+            return
+        if packetId != None and self.lastPacketId+1 == packetId:
+            return # no loss
+        # removed expired entries
+        if packetId == None:
+            #print self.lastClock,machineClock
+            pass
+
+        for key in self.status.keys():
+            if (key > self.lastPacketId 
+                or key < self.lastPacketId - NbPacketStat + 1):
+                del self.status[key]
+
+        while self.lastClock + self.lastDelay * 0.02 < machineClock:
+            self.status[self.lastPacketId] = None
+            self.lastPacketId += 1
+            self.lastClock += self.lastDelay * 0.01
+
+
+
+    def getStat(self):
+        if len(self.status) == 0: return None
+        packetIdList = sorted(self.status.keys())
+        maxPacketId = max(packetIdList)
+        total = 0
+        base = 0
+        strRecv = ""
+        count = 0
+        recv = 0
+        for packetId in packetIdList:
+            if packetId >= maxPacketId - NbPacketStat + 1:
+                count += 1
+                rssi = self.status[packetId]
+                if rssi != None:
+                    coef = MovingAvgCoefList[maxPacketId - packetId]
+                    total += coef * rssi
+                    base += coef
+                    strRecv += "*"
+                    recv += 1
+                else: 
+                    strRecv += "."
+        if recv == 0: 
+            avgRssi = -99
+        else: avgRssi = total / float(base)
+        #print 
+        return (strRecv, recv, avgRssi, maxPacketId, self.status[maxPacketId])
+
+#WithCurses = False
+WithCurses = True
+
+class SnifferBar:
+    def __init__(self):
+        self.nodeTable = {}
+        self.ignoredPacket = 0
+        self.incorrectPacket = 0
+        self.lock = threading.Lock()
+
+    def handlePacket(self, info):
+        self.lock.acquire()
+        self._handlePacket(info)
+        self.lock.release()
+
+    def _handlePacket(self, info):
+        packet = info["packet"]
+        #print (info, " " + " ".join(["%02x"%ord(x) for x in info["packet"]]))
+        if len(packet) != 18: 
+            # ignore packet
+            self.ignoredPacket += 1
+            return
+        (panId, broadcastAddress, zero, senderId, rimeChannel 
+         ) = struct.unpack("HHBBB", packet[3:3+7])
+        #print  ("%x"%panId, broadcastAddress, senderId, rimeChannel)
+        packetId, nodeId, delay = (struct.unpack("IHB", packet[11:11+7]))
+        if (panId != 0xabcd or broadcastAddress != 0xffff or senderId != nodeId
+            or rimeChannel != 0xee):
+            self.incorrectPacket += 1  
+
+        if nodeId not in self.nodeTable:
+            self.nodeTable[nodeId] = NodeInfo(nodeId)
+        self.nodeTable[nodeId].addPacket(
+            info["clock"], info["machineClock"], packetId, delay, info["rssi"])
+        #print packetId, nodeId, info["clock"], delay
+
+    def startDisplayThread(self):
+        self.displayThread = threading.Thread(target=self.runDisplayThread)
+        self.displayThread.daemon = True
+        self.displayThread.start()
+
+    def runDisplayThread(self):
+        if WithCurses:
+            self.screen = curses.initscr()
+            self.screen.border()
+            curses.curs_set(0)
+            #curses.noecho()
+            #curses.cbreak()
+            #self.screen.keypad(1)
+            atexit.register(self.endCurses)
+        while True:
+            #print "(update)"
+            time.sleep(0.6)
+            self.lock.acquire()
+            self.display()
+            self.lock.release()
+
+    def display(self):
+        for i,nodeId in enumerate(sorted(self.nodeTable.keys())):
+            node = self.nodeTable[nodeId]
+            node.updateClock(time.time())
+            #print node.status
+            #self.screen.move(1,1+i)
+            bar,nbRecv, avgRssi, lastPacketId, lastRssi = node.getStat()
+            if lastRssi == None: lastRssi = -99
+            info = bar.rjust(NbPacketStat) + " % 2d " % node.nodeId
+            info += " % 3.2f [% 3d] % 5d" % (avgRssi, lastRssi, lastPacketId)
+            info += " " + ("#" * int((lastRssi+99)/4)).ljust(99/4)
+            info += "  "
+            if WithCurses:
+                self.screen.addstr(1+i,2, info)
+                self.screen.refresh()
+            else: print(info)
+
+    def endCurses(self):
+        curses.nocbreak()
+        self.screen.keypad(0)
+        curses.echo()
+        curses.endwin()
+
+#--------------------------------------------------
+
 if len(argList) == 0:
     print "# no command, exiting"
     sys.exit(0)
@@ -455,6 +628,10 @@ elif command == "sniffer-opera":
     sniffer.runAsPacketSniffer("opera")
 elif command == "sniffer-text":
     sniffer.runAsPacketSniffer("text")
+elif command == "sniffer-bar":
+    snifferBar = SnifferBar()
+    snifferBar.startDisplayThread()
+    sniffer.runAsPacketSniffer("observer", snifferBar.handlePacket)
 elif command == "record":
     if option.logFileName == None:
         if option.expName == None:

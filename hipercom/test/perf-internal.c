@@ -49,8 +49,10 @@ AUTOSTART_PROCESSES(&init_process);
 unsigned char send_buffer[140];
 unsigned char recv_buffer[140];
 
-#define CONTENT_SIZE 100
-//#define CONTENT_SIZE 4
+
+
+//#define CONTENT_SIZE 100
+#define CONTENT_SIZE 7
 
 static volatile long last_seq_num = -1;
 static volatile long stat_bad_size = 0;
@@ -121,8 +123,13 @@ PROCESS_THREAD(sender_thread, ev, data)
   memset(send_buffer, 0xa5, sizeof(send_buffer));
   memcpy(send_buffer+sizeof(i), &originator, sizeof(originator));
 
-  for (;;) {
+#ifdef SEND_DELAY
+  char delay = SEND_DELAY*100 / CLOCK_SECOND;
+  memcpy(send_buffer+sizeof(i)+sizeof(originator),
+	 &delay, sizeof(delay));
+#endif
 
+  for (;;) {
 #ifndef DIRECT_SEND
     memcpy(send_buffer, &i, sizeof(i));
     i++;
