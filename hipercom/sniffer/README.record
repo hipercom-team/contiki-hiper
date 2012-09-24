@@ -1,7 +1,25 @@
+
+===========================================================================
+  Recording traces
+==================================================
+
 In order to record sniffer traces, the sniffer may be started as
 
   python moteSniffer.py --tty <tty name> --channel <channel> \
-                        --exp <exp name> record
+                        --high-speed --exp <exp name> record
+
+
+===========================================================================
+  Parsing traces
+==================================================
+
+A sample parsing Java application is in LogParser ; it reads the log file
+and extracts the packets and prints the content.
+
+
+===========================================================================
+  Log Format
+==================================================
 
 The log format starts with the following lines:
 ---------------
@@ -30,3 +48,4 @@ The "sfd" entries are:
 sfd <is up> <clock>
 ---------------
 
+===========================================================================

@@ -36,6 +36,7 @@ public class LogParser {
 		// write content
 		while (it.hasNext()) {
 			LoggedPacket packet = it.next();
+			packet.machineTime -= parser.startTime; // adjust time
 			System.out.println(packet);
 		}
 	}
