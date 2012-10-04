@@ -1,3 +1,4 @@
+#! /usr/bin/python
 #---------------------------------------------------------------------------
 #                         Mote Management
 #        Cedric Adjih, Hipercom Project-Team, Inria Paris-Rocquencourt
@@ -16,7 +17,17 @@ except: MoteDatabase = {}
 
 #---------------------------------------------------------------------------
 
-DefaultContikiDir = ".."
+#http://www.faqs.org/docs/diveintopython/regression_path.html
+#http://stackoverflow.com/questions/4934806/python-how-to-find-scripts-directory
+def getScriptPath():
+    # -- DiveIntoPython method
+    #scriptDirName = os.path.dirname(sys.argv[0])
+    #absDirName = os.path.abspath(scriptDirName)
+    #return absDirName
+    # -- StackOverflow method
+    return os.path.dirname(os.path.realpath(__file__))
+
+DefaultContikiDir = getScriptPath() + "/.."
 DefaultMoteType = "z1"
 
 #if not os.path.exists(ContikiDir):
@@ -96,7 +107,7 @@ class MoteManager:
         print ("* Resetting mote " + ttyName)
         moteBsl = self.getBslCommand(moteType)
         command = moteBsl + " -c "+ttyName+" -r"
-        print "! "+command
+        print ("! "+command)
         subprocess.check_call(command.split(" "))
 
     def getBslCommand(self, moteType):
@@ -261,6 +272,7 @@ def doFlashCommand(argList, option):
 
     if mote.moteId != None: hashFileName = ".last-flash-hash-%s" % mote.moteId
     else: hashFileName != None
+    hexHash = None
     if mote.moteId != None and option.noUselessReflash and hashFileName != None:
         with open(option.firmware) as f:
             hexHash = hashlib.md5(f.read()).hexdigest()
@@ -273,7 +285,7 @@ def doFlashCommand(argList, option):
                                 %(option.firmware,hexHash[:8]))
                         return # already flashed with this firmware
     mote.flashFirmware(option.firmware)
-    if hashFileName != None:
+    if hashFileName != None and hexHash != None:
         with open(hashFileName, "w") as f:
             f.write(hexHash+"\n")
     _runAsCommand(argList, option)
@@ -284,6 +296,10 @@ def doDumpCommand(argList, option):
     while True:
         sys.stdout.write(mote.port.read(1))
         sys.stdout.flush()
+
+def doShowTtyCommand(argList, option):
+    mote = getMoteFromArg(argList, option)
+    print (mote.ttyName)
 
 def doResetCommand(argList, option):
     mote = getMoteFromArg(argList, option)
@@ -300,6 +316,8 @@ def _runAsCommand(argList, option):
         doDumpCommand(argList[1:], option)
     elif name == "reset":
         doResetCommand(argList[1:], option)
+    elif name == "show-tty":
+        doShowTtyCommand(argList[1:], option)
     else: raise RuntimeError("bad command arg", name)
 
 def runAsCommand(initialArgList):
