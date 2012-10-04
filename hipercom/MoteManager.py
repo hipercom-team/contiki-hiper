@@ -1,3 +1,4 @@
+#! /usr/bin/python
 #---------------------------------------------------------------------------
 #                         Mote Management
 #        Cedric Adjih, Hipercom Project-Team, Inria Paris-Rocquencourt
@@ -92,7 +93,7 @@ class MoteManager:
         print ("* Resetting mote " + ttyName)
         moteBsl = self.getBslCommand(moteType)
         command = moteBsl + " -c "+ttyName+" -r"
-        print "! "+command
+        print ("! "+command)
         subprocess.check_call(command.split(" "))
 
     def getBslCommand(self, moteType):
@@ -234,6 +235,7 @@ def doFlashCommand(argList, option):
 
     if mote.moteId != None: hashFileName = ".last-flash-hash-%s" % mote.moteId
     else: hashFileName != None
+    hexHash = None
     if mote.moteId != None and option.noUselessReflash and hashFileName != None:
         with open(option.firmware) as f:
             hexHash = hashlib.md5(f.read()).hexdigest()
@@ -246,7 +248,7 @@ def doFlashCommand(argList, option):
                                 %(option.firmware,hexHash[:8]))
                         return # already flashed with this firmware
     mote.flashFirmware(option.firmware)
-    if hashFileName != None:
+    if hashFileName != None and hexHash != None:
         with open(hashFileName, "w") as f:
             f.write(hexHash+"\n")
     _runAsCommand(argList, option)
@@ -260,7 +262,7 @@ def doDumpCommand(argList, option):
 
 def doShowTtyCommand(argList, option):
     mote = getMoteFromArg(argList, option)
-    print (mote.ttyname)
+    print (mote.ttyName)
 
 def doResetCommand(argList, option):
     mote = getMoteFromArg(argList, option)
