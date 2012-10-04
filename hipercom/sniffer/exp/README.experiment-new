@@ -1,0 +1,85 @@
+Experiment with:
+
+  make short MOTEID=2
+  make short MOTEID=3
+  make short MOTEID=4
+  make short MOTEID=5
+
+And one node with test-perf.c
+
+
+
+---------------------------------------------------------------------------
+
+Ref:
+
+<http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=5502548>
+. Fig 1: multipath fading
+. Coherence length    -> L ~= 3cm/10cm
+. Coherence bandwidth -> 100 Mhz - 1 Mhz
+* PDR 1000 packets 29-byte-long (2.3 ms -> 4 sec) / 16 channel scan 
+  / Robotic arm 735 locations      (short vs long links)
+
+<http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=5368856>
+. Exp:
+  . TelosB (TinyOS)
+  . exp:
+    . maximum rate sending:
+    . vary power output
+    . average noise = RSSI read every 10 ms
+    . measure interchannel received power
+
+- Result:
+    . [18-19-20] near channel -> correlation power vs RSSI
+    . [21-23-24] far channel, CC2420 little correlation with transmit power
+    . 11-6, 25-26 -> not distinguisable from noise
+    -> the degree of correlation cannot be deduced from spacing
+    . power level matrix
+
+<http://www.eecs.berkeley.edu/~jortiz/papers/ipsn083s-ortiz.pdf>
+. CC2420 has no equalisation 
+  -> delay spread greater than 50 ns causes problems
+. RMS delay spread = 10-200 ns in [10]
+* Criticize Sexton et al [21]
+. the case for routing instead of channel hopping
+. testbed: 
+  - motes are using the routing tree + command [some motes fail at
+    commands + some times 0.5 to 15 minute routing convergence time]
+  - use WiSpy spectrum analyzer
+  - Industrial: 20 TelosB
+  - Computer room: 23 TelosB
+  - Setup: 55-60 MicaZ
+  * 100 broadcast packets with 20 millisec
+. results:
+  - many of the links are unidirectionnal (10-46% dep. on threshold)
+  - connectivity ensured with 5% of the links
+  - only a small fraction of the links are MCL (2-6%)
+  - only few MCTriangles (20 ppm)
+  - bimodal links (poor or good)
+
+<http://dl.acm.org/citation.cfm?id=1460478>
+. not so informative
+
+<http://www.cs.berkeley.edu/~culler/AIIT/papers/radio/Sexton%20SICONR5.pdf>
+.
+
+
+<http://www.cs.dartmouth.edu/~miluzzo/papers/miluzzo_EWSN08.pdf>
+
+
+<http://dl.acm.org/citation.cfm?id=1460427>
+
+
+<http://www.cs.berkeley.edu/~culler/AIIT/papers/radio/Sexton%20SICONR5.pdf>
+
+
+<http://www.cs.berkeley.edu/~culler/AIIT/papers/radio/Azimi-Sadjadi%20Interference.pdf>
+
+
+---------------------------------------------------------------------------
+
+Duty cycle
+
+<http://books.google.fr/books?id=mVji-YA5kgEC&pg=PT208&lpg=PT208&dq=TSMP+contiki&source=bl&ots=ENzaP5R9Bl&sig=O4XjW-mhXWLf47aI9HwUG7-hNd8&hl=en&sa=X&ei=K-NVT7zKKNCT0QW7psjeCQ&redir_esc=y#v=onepage&q=TSMP%20contiki&f=false>
+
+---------------------------------------------------------------------------

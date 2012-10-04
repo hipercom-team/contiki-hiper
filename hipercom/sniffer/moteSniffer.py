@@ -6,14 +6,18 @@
 #---------------------------------------------------------------------------
 
 import sys, time, select, optparse, random, struct, hashlib
-import datetime
+import datetime, os
 import socket
-
+import threading, curses, atexit # for bars
 
 sys.path.append("..")
 import MoteManager
 
 #---------------------------------------------------------------------------
+
+LogVersion = (1,0)
+
+#--------------------------------------------------
 
 def makeCmd(cmd):
     return "CI"+chr(len(cmd))+cmd
@@ -119,18 +123,29 @@ class MoteSniffer:
         self.channel = 26
         self.lastSfdUp = None
         self.option = option
-        if option.logFileName != None:
-            self.log = open(option.logFileName, "wb")
-        else: self.log = None
 
     #--------------------------------------------------
 
-    def runAsPacketSniffer(self, outputFormat = "opera", channel=26):
+    def runAsPacketSniffer(self, outputFormat = "opera", packetObserver = None):
+        if self.option.logFileName != None:
+            self.openLog()
+        else: self.log = None
+
         self.outputFormat = outputFormat
+        self.packetObserver = packetObserver
         self.prepareOutputFormat()
-        #mote.write(makeCmd("C"+chr(channel)))
+        #mote.write(makeCmd("C"+chr(self.channel)))
         mote.write(makeCmd("P"))
         self.loopPacketSniffer()
+
+    def openLog(self):
+        self.log = open(self.option.logFileName, "wb")
+        self.log.write("version %s.%s\n" % (LogVersion[0], LogVersion[1]))
+        self.log.write("channel %s\n" % self.channel)
+        self.log.write("tty %s\n" % self.mote.ttyName)
+        self.log.write("start-time %lf\n" % time.time())
+        self.log.write("end-header\n")
+        self.log.flush()
 
     def prepareOutputFormat(self):
         if self.outputFormat == "opera" or self.outputFormat == "wireshark":
@@ -154,9 +169,13 @@ class MoteSniffer:
                 print "* sniffer mote switched to canal", repr(data)
                 continue
             elif data[0] == 'p':
-                sys.stdout.write("+") ; sys.stdout.flush()
+                if self.outputFormat != "observer":
+                    sys.stdout.write("+") ; sys.stdout.flush()
                 if self.outputFormat == "wireshark": self.sendAsZep(data)
                 elif self.outputFormat == "text": self.dumpAsText(data)
+                elif self.outputFormat == "record": self.recordPacket(data)
+                elif self.outputFormat == "observer": 
+                    if self.packetObserver != None: self.notifyObserver(data)
                 else: self.sendAsOpera(data)
             elif data[0] == 's':
                 self.processSfd(data)
@@ -166,12 +185,19 @@ class MoteSniffer:
 
     def processSfd(self, data):
         assert data[0] == 's'
-        #print repr(data), len(data)
+        #print "SFD", repr(data), len(data)
+        if len(data[0]) == 1: 
+            #sys.stdout.write("/") 
+            #sys.stdout.flush()
+            return
         isUp, padding, clock, serialClock = struct.unpack("<BBII", data[1:])
         #print "(",isUp, clock,")"
         info = ("sfd", isUp, clock)
+        #if self.log != None:
+        #    self.log.write(repr(info)+"\n")
         if self.log != None:
-            self.log.write(repr(info)+"\n")
+            self.log.write("sfd %s %s\n" % (isUp, clock))
+            self.log.flush()
         #assert serialClock > clock
         if isUp:
             if self.lastSfdUp == None:
@@ -225,15 +251,45 @@ class MoteSniffer:
                 timestamp, counter, rssi, linkQual, len(packet)))
         if not self.option.shortInfo:
             print (" " + " ".join(["%02x"%ord(x) for x in packet]))
-        if self.log != None:
-            packetHash = hashlib.md5(packet).hexdigest()
-            info = ("packet", packetHash, t, rssi, linkQual, counter)
-            self.log.write(repr(info)+"\n")
+        #if self.log != None:
+        #    packetHash = hashlib.md5(packet).hexdigest()
+        #    info = ("packet", packetHash, t, rssi, linkQual, counter)
+        #    self.log.write(repr(info)+"\n")
 
+    def recordPacket(self, data):
+        lost, rssi, linkQual, counter, t = struct.unpack("<BBBII", data[1:12])
+        if lost & 1 == 0: freq = FreqLow
+        else: freq = FreqHigh
+        #timestamp = (t / float(freq), t)
+        packet = data[12:]
+        #print ("timestamp=%s pkt#%d rssi=%d linkQual=%d len=%d" % (
+        #        timestamp, counter, rssi, linkQual, len(packet)))
+        packetRepr = "".join(["%02x"%ord(x) for x in packet])
+        packetHash = hashlib.md5(packet).hexdigest()
+        self.log.write("packet " + packetHash 
+                       + " %lf" % time.time()
+                       + " %lf" % (t/float(freq))
+                       + " %s %s %s" % (rssi, linkQual, counter)
+                       + " " + packetRepr
+                       + "\n")
+        self.log.flush()
+
+
+    def notifyObserver(self, data):
+        assert self.packetObserver != None
+        info = {"machineClock": time.time()}
+        (info["lost"], info["rssi"], info["linkQual"], info["counter"], 
+         t) = struct.unpack("<BbBII", data[1:12])
+        info["rssi"] += -45 # cf. RSSI_OFFSET - cc2420 doc
+        if info["lost"] & 1 == 0: freq = FreqLow
+        else: freq = FreqHigh
+        info["clock"] = (t/float(freq))
+        info["packet"] = data[12:]
+        self.packetObserver(info)
 
     #--------------------------------------------------
 
-    def runAsRssiSniffer(self, channel=26):
+    def runAsRssiSniffer(self):
         mote.write(makeCmd("R"))
         while True:
             data = moteGetCmdAnswer(mote)
@@ -272,6 +328,15 @@ class MoteSniffer:
                 sys.stdout.flush()
 
     #--------------------------------------------------
+
+    def setChannel(self, channel):
+        cmd = "C" + struct.pack("B", channel)
+        self.mote.port.write(makeCmd(cmd))
+        answer = moteGetCmdAnswer(mote)
+        if answer != cmd: 
+            raise ValueError("FATAL, unexpected command answer':", 
+                             (cmd, answer))
+        self.channel = channel
 
 #---------------------------------------------------------------------------
 
@@ -336,6 +401,8 @@ parser.add_option("--channel", dest="channel", action="store", type="int",
                   default=None)
 parser.add_option("--log", dest="logFileName", action="store", type="string",
                   default=None)
+parser.add_option("--exp", dest="expName", action="store", type="string",
+                  default=None)
 parser.add_option("--short", dest="shortInfo", action="store_true", 
                   default=False)
 parser.add_option("--record", dest="recordFileName", action="store", 
@@ -383,23 +450,162 @@ if option.withHighSpeed:
         raise RuntimeError("Cannot sync with sniffer mote")
     print "done"
 
-if option.channel != None:
-    print "* switching to channel %s." % option.channel,
-    channel = option.channel
-    if channel < 0: channel = 0
-    if channel > 26: channel = 26
-    cmd = "C" + struct.pack("B", channel)
-    mote.port.write(makeCmd(cmd))
-    answer = moteGetCmdAnswer(mote)
-    if answer != cmd: 
-        print "FATAL, unexpected command answer':", repr(answer)
-        sys.exit(1)        
-    else: print "done"
-    mote.channel = channel
-
 #--------------------------------------------------
 
-print 
+NbPacketStat = 20
+
+MovingAvgCoef = 0.9
+MovingAvgCoefList = [MovingAvgCoef ** i for i in range(NbPacketStat)]
+
+print MovingAvgCoefList
+
+class NodeInfo:
+    
+    def __init__(self, nodeId):
+        self.nodeId = nodeId
+        self.lastClock = None
+        self.lastPacketId = None
+        self.status = {}
+
+    def addPacket(self, clock, machineClock, packetId, delay, rssi):
+        #print clock, machineClock, packetId, delay
+        self.updateClock(machineClock, packetId)
+        self.status[packetId] = rssi
+        self.lastPacketId = packetId
+        self.lastClock = machineClock
+        self.lastDelay = delay
+        #print self.status
+
+    def updateClock(self, machineClock, packetId = None):
+        if self.lastClock == None:
+            return
+        if packetId != None and self.lastPacketId+1 == packetId:
+            return # no loss
+        # removed expired entries
+        if packetId == None:
+            #print self.lastClock,machineClock
+            pass
+
+        for key in self.status.keys():
+            if (key > self.lastPacketId 
+                or key < self.lastPacketId - NbPacketStat + 1):
+                del self.status[key]
+
+        while self.lastClock + self.lastDelay * 0.02 < machineClock:
+            self.status[self.lastPacketId] = None
+            self.lastPacketId += 1
+            self.lastClock += self.lastDelay * 0.01
+
+
+
+    def getStat(self):
+        if len(self.status) == 0: return None
+        packetIdList = sorted(self.status.keys())
+        maxPacketId = max(packetIdList)
+        total = 0
+        base = 0
+        strRecv = ""
+        count = 0
+        recv = 0
+        for packetId in packetIdList:
+            if packetId >= maxPacketId - NbPacketStat + 1:
+                count += 1
+                rssi = self.status[packetId]
+                if rssi != None:
+                    coef = MovingAvgCoefList[maxPacketId - packetId]
+                    total += coef * rssi
+                    base += coef
+                    strRecv += "*"
+                    recv += 1
+                else: 
+                    strRecv += "."
+        if recv == 0: 
+            avgRssi = -99
+        else: avgRssi = total / float(base)
+        #print 
+        return (strRecv, recv, avgRssi, maxPacketId, self.status[maxPacketId])
+
+#WithCurses = False
+WithCurses = True
+
+class SnifferBar:
+    def __init__(self):
+        self.nodeTable = {}
+        self.ignoredPacket = 0
+        self.incorrectPacket = 0
+        self.lock = threading.Lock()
+
+    def handlePacket(self, info):
+        self.lock.acquire()
+        self._handlePacket(info)
+        self.lock.release()
+
+    def _handlePacket(self, info):
+        packet = info["packet"]
+        #print (info, " " + " ".join(["%02x"%ord(x) for x in info["packet"]]))
+        if len(packet) != 18: 
+            # ignore packet
+            self.ignoredPacket += 1
+            return
+        (panId, broadcastAddress, zero, senderId, rimeChannel 
+         ) = struct.unpack("HHBBB", packet[3:3+7])
+        #print  ("%x"%panId, broadcastAddress, senderId, rimeChannel)
+        packetId, nodeId, delay = (struct.unpack("IHB", packet[11:11+7]))
+        if (panId != 0xabcd or broadcastAddress != 0xffff or senderId != nodeId
+            or rimeChannel != 0xee):
+            self.incorrectPacket += 1  
+
+        if nodeId not in self.nodeTable:
+            self.nodeTable[nodeId] = NodeInfo(nodeId)
+        self.nodeTable[nodeId].addPacket(
+            info["clock"], info["machineClock"], packetId, delay, info["rssi"])
+        #print packetId, nodeId, info["clock"], delay
+
+    def startDisplayThread(self):
+        self.displayThread = threading.Thread(target=self.runDisplayThread)
+        self.displayThread.daemon = True
+        self.displayThread.start()
+
+    def runDisplayThread(self):
+        if WithCurses:
+            self.screen = curses.initscr()
+            self.screen.border()
+            curses.curs_set(0)
+            #curses.noecho()
+            #curses.cbreak()
+            #self.screen.keypad(1)
+            atexit.register(self.endCurses)
+        while True:
+            #print "(update)"
+            time.sleep(0.6)
+            self.lock.acquire()
+            self.display()
+            self.lock.release()
+
+    def display(self):
+        for i,nodeId in enumerate(sorted(self.nodeTable.keys())):
+            node = self.nodeTable[nodeId]
+            node.updateClock(time.time())
+            #print node.status
+            #self.screen.move(1,1+i)
+            bar,nbRecv, avgRssi, lastPacketId, lastRssi = node.getStat()
+            if lastRssi == None: lastRssi = -99
+            info = bar.rjust(NbPacketStat) + " % 2d " % node.nodeId
+            info += " % 3.2f [% 3d] % 5d" % (avgRssi, lastRssi, lastPacketId)
+            info += " " + ("#" * int((lastRssi+99)/4)).ljust(99/4)
+            info += "  "
+            if WithCurses:
+                self.screen.addstr(1+i,2, info)
+                self.screen.refresh()
+            else: print(info)
+
+    def endCurses(self):
+        curses.nocbreak()
+        self.screen.keypad(0)
+        curses.echo()
+        curses.endwin()
+
+#--------------------------------------------------
 
 if len(argList) == 0:
     print "# no command, exiting"
@@ -408,7 +614,13 @@ if len(argList) == 0:
 sniffer = MoteSniffer(mote, option)
 command = argList[0]
 
-sniffer.lastTimeStamp = 0 #XXX
+if option.channel != None:
+    print "* switching to channel %s... " % option.channel,
+    channel = option.channel
+    if channel < 0: channel = 0
+    if channel > 26: channel = 26
+    sniffer.setChannel(channel)
+    print "done"
 
 if command == "sniffer-wireshark":
     sniffer.runAsPacketSniffer("wireshark")
@@ -416,6 +628,20 @@ elif command == "sniffer-opera":
     sniffer.runAsPacketSniffer("opera")
 elif command == "sniffer-text":
     sniffer.runAsPacketSniffer("text")
+elif command == "sniffer-bar":
+    snifferBar = SnifferBar()
+    snifferBar.startDisplayThread()
+    sniffer.runAsPacketSniffer("observer", snifferBar.handlePacket)
+elif command == "record":
+    if option.logFileName == None:
+        if option.expName == None:
+            raise RunTimeError("Specify either --log or --exp")
+        ttyName = os.path.basename(mote.ttyName)
+        channel = sniffer.channel
+        logFileName = "exp-%s-%s-ch%d.log" % (option.expName, ttyName, channel)
+        option.logFileName = logFileName
+    print("* using log file name '%s'" % option.logFileName)
+    sniffer.runAsPacketSniffer("record")
 elif command == "rssi":
     sniffer.runAsRssiSniffer()
 elif command == "rssi-dac":

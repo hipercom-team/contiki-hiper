@@ -467,6 +467,7 @@ static void run_main_loop(void)
 	  if (command_buffer[0] == 'C') {
 	    current_channel = command_buffer[1];
 	    cc2420_set_channel(current_channel);
+	    command_buffer[1] = cc2420_get_channel();
 	    update_output_buffer(0, command_buffer, 2);
 	    cmd_ok = 1;
 	  } 
@@ -482,7 +483,6 @@ static void run_main_loop(void)
     }
   }
 }
-
 
 /*---------------------------------------------------------------------------*/
 
