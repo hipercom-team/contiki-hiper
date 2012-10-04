@@ -15,7 +15,17 @@ except: MoteDatabase = {}
 
 #---------------------------------------------------------------------------
 
-DefaultContikiDir = ".."
+#http://www.faqs.org/docs/diveintopython/regression_path.html
+#http://stackoverflow.com/questions/4934806/python-how-to-find-scripts-directory
+def getScriptPath():
+    # -- DiveIntoPython method
+    #scriptDirName = os.path.dirname(sys.argv[0])
+    #absDirName = os.path.abspath(scriptDirName)
+    #return absDirName
+    # -- StackOverflow method
+    return os.path.dirname(os.path.realpath(__file__))
+
+DefaultContikiDir = getScriptPath() + "/.."
 DefaultMoteType = "z1"
 
 #if not os.path.exists(ContikiDir):
@@ -248,6 +258,10 @@ def doDumpCommand(argList, option):
         sys.stdout.write(mote.port.read(1))
         sys.stdout.flush()
 
+def doShowTtyCommand(argList, option):
+    mote = getMoteFromArg(argList, option)
+    print (mote.ttyname)
+
 def doResetCommand(argList, option):
     mote = getMoteFromArg(argList, option)
     mote.reset()
@@ -263,6 +277,8 @@ def _runAsCommand(argList, option):
         doDumpCommand(argList[1:], option)
     elif name == "reset":
         doResetCommand(argList[1:], option)
+    elif name == "show-tty":
+        doShowTtyCommand(argList[1:], option)
     else: raise RuntimeError("bad command arg", name)
 
 def runAsCommand(initialArgList):
