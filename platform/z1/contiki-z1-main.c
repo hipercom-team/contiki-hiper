@@ -273,9 +273,11 @@ main(int argc, char **argv)
   set_rime_addr();
 
   cc2420_init();
-  printf("P2\n");
+  //#ifndef WITHOUT_I2C_INIT
   accm_init();
-  printf("P3\n");   
+  //#else
+  //#warning "skipping accm_init() [WITHOUT_I2C_INIT is defined]"
+  //#endif 
 
   {
     uint8_t longaddr[8];

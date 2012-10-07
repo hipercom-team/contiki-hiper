@@ -255,9 +255,7 @@ accm_set_grange(uint8_t grange){
 
 void
 accm_init(void) {
-  //printf("P3.1\n");
   if(!(_ADXL345_STATUS & INITED)){
-    //printf("P3.2\n");
     PRINTFDEBUG("ADXL345 init\n");
     _ADXL345_STATUS |= INITED;
     accm_int1_cb = NULL;
@@ -272,32 +270,25 @@ accm_init(void) {
     ADXL345_SEL2 &=~ (ADXL345_INT1_PIN | ADXL345_INT2_PIN);
 
     /* Set up ports and pins for I2C communication */
-    //printf("P3.4\n");
+#ifndef WITHOUT_I2C_INIT
     i2c_enable();
-    //printf("P3.5\n");
+#else
+#warning "skipping i2c_enable() [WITHOUT_I2C_INIT is defined]"
+#endif 
 
     /* set default register values. */
-    //printf("P3.6\n");
-    //printf("P3.6.0\n");
     accm_write_stream(15, &adxl345_default_settings[0]);
-    //printf("P3.6.1\n");
     accm_write_stream(5, &adxl345_default_settings[15]);
-    //printf("P3.6.2\n");
     accm_write_reg(ADXL345_DATA_FORMAT, adxl345_default_settings[20]);
-    //printf("P3.6.3\n");
     accm_write_reg(ADXL345_FIFO_CTL, adxl345_default_settings[21]);
-    //printf("P3.7\n");
 
-    //printf("P3.8\n");
     process_start(&accmeter_process, NULL);
-    //printf("P3.9\n");
 
     /* Enable msp430 interrupts on the two interrupt pins. */
     dint();
     ADXL345_IES &=~ (ADXL345_INT1_PIN | ADXL345_INT2_PIN);   // low to high transition interrupts
     ADXL345_IE |= (ADXL345_INT1_PIN | ADXL345_INT2_PIN);     // enable interrupts
     eint();
-    //printf("P3.10\n");
   }
 }
 

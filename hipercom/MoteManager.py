@@ -40,9 +40,11 @@ DefaultMoteType = "z1"
 
 class MoteManager:
     def __init__(self, contikiDir = DefaultContikiDir, 
-                 defaultMoteType = DefaultMoteType):
+                 defaultMoteType = DefaultMoteType,
+                 quiet = False):
         self.contikiDir = contikiDir
         self.defaultMoteType = defaultMoteType
+        self.quiet = quiet
 
     def getMoteTableOfType(self, moteType):
         if moteType == None:
@@ -53,7 +55,7 @@ class MoteManager:
             command = [self.contikiDir+"/tools/sky/motelist-linux", "-c"]
         else: raise ValueError("Unknown moteType", moteType)
         
-        print "!", " ".join(command)
+        if not self.quiet: print "!", " ".join(command)
         moteStr = subprocess.Popen(command, 
                                    stdout=subprocess.PIPE).communicate()[0]
         result = []
@@ -104,10 +106,10 @@ class MoteManager:
     def resetMoteByTty(self, ttyName, moteType=None):
         if moteType == None: 
             moteType = self.defaultMoteType
-        print ("* Resetting mote " + ttyName)
+        if not self.quiet: print ("* Resetting mote " + ttyName)
         moteBsl = self.getBslCommand(moteType)
         command = moteBsl + " -c "+ttyName+" -r"
-        print ("! "+command)
+        if not self.quiet: print ("! "+command)
         subprocess.check_call(command.split(" "))
 
     def getBslCommand(self, moteType):
