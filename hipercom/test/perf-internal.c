@@ -17,10 +17,15 @@
 #include "net/rime/unicast.h"
 #include "random.h"
 
-//#include "dev/adxl345.h"
+
 #include "node-id.h"
 
 #include "cc2420.h"
+
+#ifdef WITH_ACCEL
+#include "dev/adxl345.h"
+#include "accel-info.c"
+#endif
 
 /*---------------------------------------------------------------------------*/
 
@@ -153,6 +158,10 @@ PROCESS_THREAD(sender_thread, ev, data)
     cc2420_send(send_buffer, 9);
 #endif
 
+#ifdef WITH_ACCEL
+    check_accel_event();
+#endif
+
 #ifdef SEND_DELAY
   etimer_set(&wait_timer, SEND_DELAY);
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&wait_timer));
@@ -204,6 +213,8 @@ PROCESS_THREAD(init_process, ev, data)
 
   cc2420_set_channel(CHANNEL);
   cc2420_set_send_with_cca(0);
+
+  accel_init();
 
 #if defined(ACTION_SEND) || defined(ACTION_SEND_FAST)
   process_start(&sender_thread, NULL);
