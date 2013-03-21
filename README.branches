@@ -1,0 +1,19 @@
+---------------------------------------------------------------------------
+
+This repository contains extensions/modifications/fixes of the 
+Contiki operating system.
+
+Select one by checking out the proper branch (with "git checkout <branch>").
+
+Available branches are:
+- master:
+  this empty branch
+
+- official-contiki
+  Unmodified contiki (master branch) retrieved from:
+
+- official-contiki-sourceforge
+  Unmodified contiki (master branch) retrieved from SourceForge:
+    git://contiki.git.sourceforge.net/gitroot/contiki/contiki
+
+---------------------------------------------------------------------------
