@@ -11,6 +11,7 @@ Available branches are:
 
 - official-contiki
   Unmodified contiki (master branch) retrieved from:
+    git://github.com/contiki-os/contiki.git
 
 - official-contiki-sourceforge
   Unmodified contiki (master branch) retrieved from SourceForge:
