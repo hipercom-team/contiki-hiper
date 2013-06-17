@@ -17,4 +17,8 @@ Available branches are:
   Unmodified contiki (master branch) retrieved from SourceForge:
     git://contiki.git.sourceforge.net/gitroot/contiki/contiki
 
+- contiki-senslab
+  Contiki modified for senslab from
+    https://gforge.inria.fr/projects/contiki-senslab/
+
 ---------------------------------------------------------------------------
