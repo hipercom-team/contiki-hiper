@@ -21,4 +21,8 @@ Available branches are:
   Contiki modified for senslab from
     https://gforge.inria.fr/projects/contiki-senslab/
 
+- contiki-senslab-updated
+  the branch contiki-senslab merged with the branch official-contiki,
+  i.e. a version of the lastest contiki for senslab (untested)
+
 ---------------------------------------------------------------------------
