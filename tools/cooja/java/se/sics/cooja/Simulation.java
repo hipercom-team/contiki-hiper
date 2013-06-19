@@ -111,6 +111,13 @@ public class Simulation extends Observable implements Runnable {
   private boolean hasPollRequests = false;
   private ArrayDeque<Runnable> pollRequests = new ArrayDeque<Runnable>();
 
+  /* [Cedric.Adjih@inria.fr] begin addition:  */
+  protected String[] argList = null; /* also provide args for Jython scripts */
+  public void setArgList(String[] commandArgList)
+  { this.argList = commandArgList; }
+  public String[] getArgList()
+  { return argList; }
+  /* [Cedric.Adjih@inria.fr] end addition */
 
   /**
    * Request poll from simulation thread.

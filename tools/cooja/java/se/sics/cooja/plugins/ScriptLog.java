@@ -37,6 +37,10 @@ public interface ScriptLog {
     public void log(String log);
     public void testOK();
     public void testFailed();
+    public void generateMessageMicrosec(final long delayMicrosec, 
+					final String msg,
+					final String eventType,
+					final Object eventData); /* [CA] */
     public void generateMessage(long delay, String msg);
     public void append(String filename, String msg);
     public void writeFile(String filename, String msg);

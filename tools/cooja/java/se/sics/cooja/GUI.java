@@ -3213,7 +3213,8 @@ public class GUI extends Observable {
         System.exit(1);
       }
       GUI gui = sim.getGUI();
-
+      sim.setArgList(args); /* [Cedric.Adjih@inria.fr] args for jython */
+  
       /* Make sure at least one test editor is controlling the simulation */
       boolean hasEditor = false;
       for (Plugin startedPlugin : gui.startedPlugins) {

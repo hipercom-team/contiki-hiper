@@ -9,6 +9,16 @@
   <property name="lib" location="lib"/>
   <property name="args" value="" />
 
+  <fileset id="jython-ubuntu-depends">
+    <filename name="/usr/share/java/antlr3-runtime.jar"/>
+    <filename name="/usr/share/java/asm3.jar"/>
+    <filename name="/usr/share/java/asm3-util.jar"/>
+    <filename name="/usr/share/java/asm3-commons.jar"/>
+    <filename name="/usr/share/java/jruby.jar"/>
+    <filename name="/usr/share/java/jna.jar"/>
+    <filename name="/usr/share/java/jna-posix.jar"/>
+  </fileset>
+
   <target name="help">
     <echo>
 The COOJA Simulator
@@ -51,8 +61,15 @@ The COOJA Simulator
           <pathelement location="lib/jdom.jar"/>
           <pathelement location="lib/log4j.jar"/>
           <pathelement location="lib/jsyntaxpane.jar"/>
+	  <pathelement location="lib/jython.jar"/>
         </classpath>
     </java>
+  </target>
+  
+  <target name="jython" depends="init">
+    <exec dir="." executable="sh" failonerror="true">
+      <arg line="jython/download-jython.sh" />
+    </exec>
   </target>
   
   <target name="javadoc" depends="init">
@@ -64,6 +81,7 @@ The COOJA Simulator
         <pathelement location="lib/jdom.jar"/>
         <pathelement location="lib/log4j.jar"/>
         <pathelement location="lib/jsyntaxpane.jar"/>
+	<pathelement location="lib/jython.jar"/>
       </classpath>
     </javadoc>
   </target>
@@ -77,6 +95,7 @@ The COOJA Simulator
         <pathelement location="lib/jdom.jar"/>
         <pathelement location="lib/log4j.jar"/>
         <pathelement location="lib/jsyntaxpane.jar"/>
+	<pathelement location="lib/jython.jar"/>
       </classpath>
     </javac>
   </target>
@@ -99,7 +118,7 @@ The COOJA Simulator
 	<ant antfile="build.xml" dir="apps/powertracker" target="clean" inheritAll="false"/>
   </target>
 
-  <target name="run" depends="init, compile, jar, copy configs">
+  <target name="run" depends="init, compile, jar, copy configs, jython">
     <java fork="yes" dir="${build}" classname="se.sics.cooja.GUI" maxmemory="512m">
       <sysproperty key="user.language" value="en"/>
       <arg line="${args}"/>
@@ -109,11 +128,12 @@ The COOJA Simulator
         <pathelement location="lib/jdom.jar"/>
         <pathelement location="lib/log4j.jar"/>
         <pathelement location="lib/jsyntaxpane.jar"/>
+	<pathelement location="lib/jython.jar"/>
       </classpath>
     </java>
   </target>
 
-  <target name="run64" depends="init, compile, jar, copy configs">
+  <target name="run64" depends="init, compile, jar, copy configs, jython">
     <java fork="yes" dir="${build}" classname="se.sics.cooja.GUI" maxmemory="512m">
       <sysproperty key="user.language" value="en"/>
       <jvmarg value="-d64 -XX:+ShowMessageBoxOnError"/>
@@ -124,11 +144,12 @@ The COOJA Simulator
         <pathelement location="lib/jdom.jar"/>
         <pathelement location="lib/log4j.jar"/>
         <pathelement location="lib/jsyntaxpane.jar"/>
+	<pathelement location="lib/jython.jar"/>
       </classpath>
     </java>
   </target>
 
-  <target name="run_errorbox" depends="init, compile, jar, copy configs">
+  <target name="run_errorbox" depends="init, compile, jar, copy configs, jython">
     <java fork="yes" dir="${build}" classname="se.sics.cooja.GUI" maxmemory="512m">
       <sysproperty key="user.language" value="en"/>
       <jvmarg value="-XX:+ShowMessageBoxOnError"/>
@@ -138,11 +159,12 @@ The COOJA Simulator
         <pathelement location="lib/jdom.jar"/>
         <pathelement location="lib/log4j.jar"/>
         <pathelement location="lib/jsyntaxpane.jar"/>
+	<pathelement location="lib/jython.jar"/>
       </classpath>
     </java>
   </target>
 
-  <target name="runprof" depends="init, compile, jar, copy configs">
+  <target name="runprof" depends="init, compile, jar, copy configs, jython">
     <java fork="yes" dir="${build}" classname="se.sics.cooja.GUI">
       <arg line="${args}"/>
       <env key="LD_LIBRARY_PATH" value="."/>
@@ -152,11 +174,12 @@ The COOJA Simulator
         <pathelement location="lib/jdom.jar"/>
         <pathelement location="lib/log4j.jar"/>
         <pathelement location="lib/jsyntaxpane.jar"/>
+	<pathelement location="lib/jython.jar"/>
       </classpath>
     </java>
   </target>
 
-  <target name="runfree" depends="init, compile, jar, copy configs">
+  <target name="runfree" depends="init, compile, jar, copy configs, jython">
     <java fork="yes" dir="${build}" classname="se.sics.cooja.GUI" maxmemory="1536m">
       <arg line="${args}"/>
       <env key="LD_LIBRARY_PATH" value="."/>
@@ -167,11 +190,12 @@ The COOJA Simulator
         <pathelement location="lib/jsyntaxpane.jar"/>
         <pathelement location="../mspsim/lib/jfreechart-1.0.11.jar"/>
         <pathelement location="../mspsim/lib/jcommon-1.0.14.jar"/>
+	<pathelement location="lib/jython.jar"/>
       </classpath>
     </java>
   </target>
 
-  <target name="run_bigmem" depends="init, compile, jar, copy configs">
+  <target name="run_bigmem" depends="init, compile, jar, copy configs, jython">
     <java fork="yes" dir="${build}" classname="se.sics.cooja.GUI" maxmemory="1536m">
       <arg line="${args}"/>
       <env key="LD_LIBRARY_PATH" value="."/>
@@ -180,6 +204,7 @@ The COOJA Simulator
         <pathelement location="lib/jdom.jar"/>
         <pathelement location="lib/log4j.jar"/>
         <pathelement location="lib/jsyntaxpane.jar"/>
+	<pathelement location="lib/jython.jar"/>
       </classpath>
     </java>
   </target>
@@ -221,12 +246,12 @@ The COOJA Simulator
     </exec>
   </target>
 
-  <target name="jar_cooja" depends="init, compile, copy configs">
+  <target name="jar_cooja" depends="init, compile, copy configs, jython">
     <mkdir dir="${dist}"/>
     <jar destfile="${dist}/cooja.jar" basedir="${build}">
       <manifest>
         <attribute name="Main-Class" value="se.sics.cooja.GUI"/>
-        <attribute name="Class-Path" value=". lib/log4j.jar lib/jdom.jar lib/jsyntaxpane.jar"/>
+        <attribute name="Class-Path" value=". lib/log4j.jar lib/jdom.jar lib/jsyntaxpane.jar lib/jython.jar"/>
       </manifest>
     </jar>
     <mkdir dir="${dist}/lib"/>

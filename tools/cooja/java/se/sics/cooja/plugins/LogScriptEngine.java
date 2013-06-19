@@ -28,10 +28,13 @@
  *
  */
 
+/* [Dec2012] modified by C. Adjih <Cedric.Adjih@inria.fr> for Jython support */
+
 package se.sics.cooja.plugins;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
+import java.io.File;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.util.Hashtable;
 import java.util.Observer;
@@ -63,8 +66,7 @@ public class LogScriptEngine {
   private static Logger logger = Logger.getLogger(LogScriptEngine.class);
   private static final long DEFAULT_TIMEOUT = 20*60*1000*Simulation.MILLISECOND; /* 1200s = 20 minutes */
 
-  private ScriptEngine engine =
-    new ScriptEngineManager().getEngineByName("JavaScript");
+  private ScriptEngine engine = null;
 
   /* Log output listener */
   private LogOutputListener logOutputListener = new LogOutputListener() {
@@ -151,6 +153,8 @@ public class LogScriptEngine {
       engine.put("id", id);
       engine.put("time", time);
       engine.put("msg", msg);
+      engine.put("coojaEventType", "mote-ouput");
+      engine.put("coojaEventData", null);
 
       stepScript();
     } catch (UndeclaredThrowableException e) {
@@ -231,6 +235,21 @@ public class LogScriptEngine {
       }
     }
     scriptThread = null;
+    engine = null; /* [CA] */
+  }
+
+  /* [CA] moved here so that it can be called from Jython code */
+  public void setTimeOut(long newTimeout) {
+    timeout = newTimeout;
+    startRealTime = System.currentTimeMillis();
+    startTime = simulation.getSimulationTime();
+    long endTime = startTime + timeout;
+    nextProgress = startTime + (endTime - startTime)/20;
+    
+    timeoutProgressEvent.remove();
+    simulation.scheduleEvent(timeoutProgressEvent, nextProgress);
+    timeoutEvent.remove();
+    simulation.scheduleEvent(timeoutEvent, endTime);
   }
 
   public void activateScript(String scriptCode) throws ScriptException {
@@ -253,16 +272,56 @@ public class LogScriptEngine {
 
     /* Parse current script */
     ScriptParser parser = new ScriptParser(scriptCode);
-    String jsCode = parser.getJSCode();
+    String jsCode = null;
+    final boolean withJython = (scriptCode.startsWith("#[python") 
+				|| scriptCode.startsWith("#[jython"));
 
-    timeout = parser.getTimeoutTime();
+    if (withJython) {
+	final String jythonSupportRelDir = "tools/cooja/jython";
+	String contikiDir = GUI.getExternalToolsSetting("PATH_CONTIKI");
+	String jythonSupportDir 
+	    = new File(contikiDir, jythonSupportRelDir).toString();
+	engine = new ScriptEngineManager().getEngineByName("python");
+
+	//Tried the following to get the engine to reload the modules, no avail:
+	//(also read jython-2.5.1/src/org/python/jsr223/*.java)
+	//
+	//engine.setBindings(engine.createBindings(),ScriptContext.GLOBAL_SCOPE);
+	//engine.setBindings(engine.createBindings(),ScriptContext.ENGINE_SCOPE);
+	//engine.getBindings(ScriptContext.GLOBAL_SCOPE).clear();
+	//engine.getBindings(ScriptContext.ENGINE_SCOPE).clear();
+	//SimpleScriptContext scriptContext = new SimpleScriptContext();
+	//engine.setScriptContext(scriptContext);  <- not compiling
+	//(also tried using scriptContext in all the engine.eval(...)
+
+	/*jsCode = scriptCode;*/ /* jython Code */
+	logger.info("Using Jython script engine: " + engine.getClass());
+	engine.put("logScriptEngine", this); /* now Jython can call us back */
+	//engine.put("scriptEngine", engine); /* maybe for kludges */
+	engine.put("contikiDir", contikiDir);
+	engine.put("jythonSupportDir", jythonSupportDir);
+	engine.put("currentConfigFileName", 
+		   simulation.getGUI().currentConfigFile.toString());
+	engine.put("configDir", 
+		   simulation.getGUI().currentConfigFile.getParent());
+	engine.put("scriptCode", scriptCode);
+	engine.eval("execfile('"+jythonSupportDir+"/ScriptLoader.py')"); 
+	/* ^^^^ using execfile reloads the Python code at each simul. "reload"*/
+	jsCode = "pass"; /* don't need to do anything later */
+	timeout = -1; /* can be set by Jython code instead, with setTimeOut */
+    } else {
+	engine = new ScriptEngineManager().getEngineByName("JavaScript");
+	jsCode = parser.getJSCode();
+	timeout = parser.getTimeoutTime();
+    }
+
     if (timeout < 0) {
       timeout = DEFAULT_TIMEOUT;
       logger.info("Default script timeout in " + (timeout/Simulation.MILLISECOND) + " ms");
     } else {
       logger.info("Script timeout in " + (timeout/Simulation.MILLISECOND) + " ms");
     }
-
+    
     engine.eval(jsCode);
 
     /* Setup script control */
@@ -295,7 +354,10 @@ public class LogScriptEngine {
       public void run() {
         /*logger.info("test script thread starts");*/
         try {
-          ((Invocable)engine).getInterface(Runnable.class).run();
+	  /*logger.info("engine: " + (Invocable)engine);*/
+	  logger.info("Found Runnable in script: " +
+		  (((Invocable)engine).getInterface(Runnable.class) != null));
+	  ((Invocable)engine).getInterface(Runnable.class).run();
         } catch (RuntimeException e) {
           Throwable throwable = e;
           while (throwable.getCause() != null) {
@@ -306,13 +368,29 @@ public class LogScriptEngine {
               throwable.getMessage().contains("test script killed") ) {
             logger.info("Test script finished");
           } else {
+	    Throwable scriptException = null;
+	    
+	    if (withJython) {
+		scriptException = e;
+		while (scriptException != null) {
+		    if (scriptException instanceof javax.script.ScriptException)
+			break;
+		    scriptException = scriptException.getCause();
+		}
+	    }
+
             if (!GUI.isVisualized()) {
               logger.fatal("Test script error, terminating Cooja.");
-              logger.fatal("Script error:", e);
+	      if (scriptException == null)
+		  logger.fatal("Script error:", e);
+	      else logger.fatal("Jython Script exception:\n" + scriptException.getCause());
+
               System.exit(1);
             }
 
-            logger.fatal("Script error:", e);
+	    if (scriptException == null)
+		logger.fatal("Script error:", e);
+	    else logger.fatal("Jython Script error:\n" + scriptException.getCause());
             deactivateScript();
             simulation.stopSimulation();
             if (GUI.isVisualized()) {
@@ -346,15 +424,7 @@ public class LogScriptEngine {
 
     Runnable activate = new Runnable() {
       public void run() {
-        startRealTime = System.currentTimeMillis();
-        startTime = simulation.getSimulationTime();
-        long endTime = startTime + timeout;
-        nextProgress = startTime + (endTime - startTime)/20;
-
-        timeoutProgressEvent.remove();
-        simulation.scheduleEvent(timeoutProgressEvent, nextProgress);
-        timeoutEvent.remove();
-        simulation.scheduleEvent(timeoutEvent, endTime);
+	setTimeOut(timeout);
       }
     };
     if (simulation.isRunning()) {
@@ -371,6 +441,8 @@ public class LogScriptEngine {
       }
       logger.info("Timeout event @ " + t);
       engine.put("TIMEOUT", true);
+      engine.put("coojaEventType", "timeout");
+      engine.put("coojaEventData", null);
       stepScript();
     }
   };
@@ -461,7 +533,10 @@ public class LogScriptEngine {
       throw new RuntimeException("test script killed");
     }
 
-    public void generateMessage(final long delay, final String msg) {
+    public void generateMessageMicrosec(final long delayMicrosec, 
+					final String msg,
+					final String eventType,
+					final Object eventData) {
       final Mote currentMote = (Mote) engine.get("mote");
       final TimeEvent generateEvent = new TimeEvent(0) {
         public void execute(long t) {
@@ -477,6 +552,8 @@ public class LogScriptEngine {
           engine.put("id", currentMote.getID());
           engine.put("time", currentMote.getSimulation().getSimulationTime());
           engine.put("msg", msg);
+	  engine.put("coojaEventType", eventType);
+	  engine.put("coojaEventData", eventData);
 
           stepScript();
         }
@@ -485,9 +562,14 @@ public class LogScriptEngine {
         public void run() {
           simulation.scheduleEvent(
               generateEvent,
-              simulation.getSimulationTime() + delay*Simulation.MILLISECOND);
+              simulation.getSimulationTime() + delayMicrosec);
         }
       });
+    }
+      
+    public void generateMessage(final long delay, final String msg) {
+	generateMessageMicrosec(delay*Simulation.MILLISECOND, 
+				msg, "schedule", null);
     }
   };
 }
