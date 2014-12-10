@@ -1,0 +1,51 @@
+
+===========================================================================
+  Recording traces
+==================================================
+
+In order to record sniffer traces, the sniffer may be started as
+
+  python moteSniffer.py --tty <tty name> --channel <channel> \
+                        --high-speed --exp <exp name> record
+
+
+===========================================================================
+  Parsing traces
+==================================================
+
+A sample parsing Java application is in LogParser ; it reads the log file
+and extracts the packets and prints the content.
+
+
+===========================================================================
+  Log Format
+==================================================
+
+The log format starts with the following lines:
+---------------
+version <x>.<y>
+channel <channel>
+tty <tty name>
+start-time <machine log start time>
+end-header
+---------------
+
+Then there are two kinds of entries "sfd" entries and "packet" entries.
+The packet entries are as follows:
+---------------
+packet <hash> <machine time> <mote time> <rssi> <linkQual> <counter> <packet>
+---------------
+with: 
+<counter> is a counter incremented for each packet received by the mote
+<hash> is a md5sum of the <packet>
+<rssi> is the rssi given by the CC2420
+<linkQual> is the link quality given by the CC2420
+<packet> is the packet dumped in hexadecimal
+
+
+The "sfd" entries are:
+---------------
+sfd <is up> <clock>
+---------------
+
+===========================================================================

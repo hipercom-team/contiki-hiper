@@ -264,12 +264,17 @@ accm_init(void) {
     int2_event = process_alloc_event();
 
     /* Set up ports and pins for interrups. */
+    //printf("P3.3\n");
     ADXL345_DIR  &=~ (ADXL345_INT1_PIN | ADXL345_INT2_PIN);
     ADXL345_SEL  &=~ (ADXL345_INT1_PIN | ADXL345_INT2_PIN);
     ADXL345_SEL2 &=~ (ADXL345_INT1_PIN | ADXL345_INT2_PIN);
 
     /* Set up ports and pins for I2C communication */
+#ifndef WITHOUT_I2C_INIT
     i2c_enable();
+#else
+#warning "skipping i2c_enable() [WITHOUT_I2C_INIT is defined]"
+#endif 
 
     /* set default register values. */
     accm_write_stream(15, &adxl345_default_settings[0]);
