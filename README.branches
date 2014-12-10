@@ -9,6 +9,13 @@ Available branches are:
 - master:
   this empty branch
 
+- sniffer
+  . Sniffer application (based on Contiki) for Zolertia Z1 motes
+  . It captures packets and send them on the serial port with a defined protocol
+  . Python application is also provided to send packets in different formats
+   (SmartRF(tm) Protocol, ZEP for wireshark, etc.)
+  (the branch sniffer-dev is the development part of this branch)
+
 - official-contiki
   Unmodified contiki (master branch) retrieved from:
     git://github.com/contiki-os/contiki.git
