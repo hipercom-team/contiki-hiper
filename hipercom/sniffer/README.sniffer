@@ -1,10 +1,7 @@
 ===========================================================================
                   Sniffer Firmware for the Zolertia Z1
-
-        Cedric Adjih, Hipercom Project-Team, Inria Paris-Rocquencourt
-                       Copyright 2012 Inria. 
-            All rights reserved. Distributed only with permission.
 ===========================================================================
+Author: Cedric Adjih, Inria 
 
 ---------------------------------------------------------------------------
 
@@ -61,6 +58,8 @@ Running the sniffer
 
 Installing one the latest versions of Wireshark
 -----------------------------------------------
+
+As of November 2014, the following it is not necessary (nor even accurate):
 
 As of March 2012, one Ubuntu PPA is available for Wireshark, 
 it is at https://launchpad.net/~dreibh/+archive/ppa

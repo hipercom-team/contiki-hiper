@@ -39,6 +39,7 @@
  *         Marcus Lundén, SICS <mlunden@sics.se>
  *         Enric M. Calvo, Zolertia <ecalvo@zolertia.com>
  */
+/* Modified by: C. Adjih (Inria, 2012-2014)*/
 
 #include <stdio.h>
 #include "contiki.h"
