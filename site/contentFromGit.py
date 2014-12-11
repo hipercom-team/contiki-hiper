@@ -5,6 +5,7 @@
 
 import os
 import subprocess
+import StringIO
 
 FileList = [
     # <branch>|None, <path>, (->) <category>, <title>, <fileName>
@@ -12,6 +13,9 @@ FileList = [
         None, "../README.branches",
      'main', 'contiki-hiper playground', 'README-main.md')
 ]
+
+if not os.path.exists("content"):
+    os.mkdir("content")
 
 for branch, inFileName, category, title, outFileName in FileList:
     date = "2014-12-10 22:30"
@@ -35,8 +39,10 @@ MdFileList = [
 ]
 
 for branch, dirName, inFileName in MdFileList:
-    command = "git show %s:%s" % (branch, os.path.join(dirName, inFileName))
-    fileContent = subprocess.check_output(command.split(" "))
-    print fileContent
+    command = "git show %s:%s | grip --export - -" % (branch, os.path.join(dirName, inFileName))
+    fileContent = subprocess.check_output(command, shell=True)
+    f = open("output/"+inFileName.replace(".md", ".html"), "w")
+    f.write(fileContent)
+    f.close()
 
 #---------------------------------------------------------------------------
