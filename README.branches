@@ -1,34 +1,52 @@
 ---------------------------------------------------------------------------
 
-This repository contains extensions/modifications/fixes of the 
+This repository contains various extensions/modifications/fixes of the 
 Contiki operating system.
 
-Select one by checking out the proper branch (with "git checkout <branch>").
+* You can retrieve the code through:
 
-Available branches are:
-- master:
-  this empty branch
+`git clone https://gforge.inria.fr/git/contiki-hiper/contiki-hiper.git`
 
-- sniffer
-  . Sniffer application (based on Contiki) for Zolertia Z1 motes
-  . It captures packets and send them on the serial port with a defined protocol
-  . Python application is also provided to send packets in different formats
+* Select one branch by checking out:
+
+`git checkout <branch>`
+
+---------------------------------------------------------------------------
+
+Some available branches are:
+
+* master:
+  the initial empty branch
+
+* sniffer: [**Sniffer Documentation**](README-sniffer.html)
+
+  Sniffer application (based on Contiki) for Zolertia Z1 motes.
+  It captures packets and send them on the serial port with a defined protocol.
+  A Python program is also provided to send packets in different formats
    (SmartRF(tm) Protocol, ZEP for wireshark, etc.)
   (the branch sniffer-dev is the development part of this branch)
 
-- official-contiki
+---------------------------------------------------------------------------
+
+Additional branches (imported reposititories):
+
+* official-contiki
+
   Unmodified contiki (master branch) retrieved from:
-    git://github.com/contiki-os/contiki.git
+    [git://github.com/contiki-os/contiki.git](http://github.com/contiki-os/contiki)
 
-- official-contiki-sourceforge
+* official-contiki-sourceforge
+
   Unmodified contiki (master branch) retrieved from SourceForge:
-    git://contiki.git.sourceforge.net/gitroot/contiki/contiki
+    [git://contiki.git.sourceforge.net/gitroot/contiki/contiki](http://contiki.git.sourceforge.net/)
 
-- contiki-senslab
-  Contiki modified for senslab from
-    https://gforge.inria.fr/projects/contiki-senslab/
+* contiki-senslab
 
-- contiki-senslab-updated
+  Contiki modified for SensLab from
+    [https://gforge.inria.fr/projects/contiki-senslab/](https://gforge.inria.fr/projects/contiki-senslab/)
+
+* contiki-senslab-updated
+
   the branch contiki-senslab merged with the branch official-contiki,
   i.e. a version of the lastest contiki for senslab (untested)
 
