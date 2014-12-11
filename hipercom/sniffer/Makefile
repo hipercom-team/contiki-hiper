@@ -82,3 +82,9 @@ save:
 	(printf "TARGET=${TARGET}\nMOTEID=${MOTEID}\n" > Makefile.target)
 
 #---------------------------------------------------------------------------
+
+html-doc:
+	for i in *.md ; do grip --export $$i $$(basename $$i .md).html ; done
+
+#---------------------------------------------------------------------------
+
